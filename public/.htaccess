@@ -1,0 +1,12 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Don't rewrite if it's a real file
+    RewriteCond %{REQUEST_FILENAME} !-f
+    
+    # Don't rewrite if it's a real directory
+    RewriteCond %{REQUEST_FILENAME} !-d
+    
+    # Rewrite everything to index.php
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>

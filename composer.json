@@ -1,0 +1,32 @@
+{
+  "name": "ff/framework",
+  "description": "FF - Fast, secure, and flexible PHP MVC framework",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "FF Framework",
+      "homepage": "https://kllpff.dev/ff"
+    }
+  ],
+  "require": {
+    "php": ">=8.1",
+    "vlucas/phpdotenv": "^5.0",
+    "symfony/mailer": "^6.0",
+    "symfony/mime": "^6.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "FF\\Framework\\": "framework/",
+      "App\\": "app/"
+    },
+    "files": [
+      "framework/Support/helpers.php"
+    ]
+  },
+  "scripts": {
+    "test": "phpunit",
+    "serve": "php -S localhost:8000 -t public"
+  },
+  "minimum-stability": "stable"
+}

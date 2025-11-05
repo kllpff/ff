@@ -1,0 +1,52 @@
+[2025-11-04 23:39:39] INFO: Cache miss - computing data
+[2025-11-04 23:39:41] INFO: Cache miss - computing data
+[2025-11-04 23:40:48] INFO: Cache miss - computing data
+[2025-11-04 23:41:03] INFO: Cache miss - computing data
+[2025-11-04 23:41:14] DEBUG: Debug message
+[2025-11-04 23:41:14] INFO: Info message
+[2025-11-04 23:41:14] WARNING: Warning message
+[2025-11-04 23:41:14] ERROR: Error message
+[2025-11-04 23:43:08] DEBUG: Debug message
+[2025-11-04 23:43:08] INFO: Info message
+[2025-11-04 23:43:08] WARNING: Warning message
+[2025-11-04 23:43:08] ERROR: Error message
+[2025-11-04 23:43:10] INFO: Cache miss - computing data
+[2025-11-05 07:47:57] INFO: Cache miss - computing data
+[2025-11-05 07:48:07] DEBUG: Debug message
+[2025-11-05 07:48:07] INFO: Info message
+[2025-11-05 07:48:07] WARNING: Warning message
+[2025-11-05 07:48:07] ERROR: Error message
+[2025-11-05 07:50:52] DEBUG: Debug message
+[2025-11-05 07:50:52] INFO: Info message
+[2025-11-05 07:50:52] WARNING: Warning message
+[2025-11-05 07:50:52] ERROR: Error message
+[2025-11-05 07:50:53] DEBUG: Debug message
+[2025-11-05 07:50:53] INFO: Info message
+[2025-11-05 07:50:53] WARNING: Warning message
+[2025-11-05 07:50:53] ERROR: Error message
+[2025-11-05 07:50:54] DEBUG: Debug message
+[2025-11-05 07:50:54] INFO: Info message
+[2025-11-05 07:50:54] WARNING: Warning message
+[2025-11-05 07:50:54] ERROR: Error message
+[2025-11-05 07:50:55] DEBUG: Debug message
+[2025-11-05 07:50:55] INFO: Info message
+[2025-11-05 07:50:55] WARNING: Warning message
+[2025-11-05 07:50:55] ERROR: Error message
+[2025-11-05 07:50:56] DEBUG: Debug message
+[2025-11-05 07:50:56] INFO: Info message
+[2025-11-05 07:50:56] WARNING: Warning message
+[2025-11-05 07:50:56] ERROR: Error message
+[2025-11-05 07:50:57] DEBUG: Debug message
+[2025-11-05 07:50:57] INFO: Info message
+[2025-11-05 07:50:57] WARNING: Warning message
+[2025-11-05 07:50:57] ERROR: Error message
+[2025-11-05 07:50:58] DEBUG: Debug message
+[2025-11-05 07:50:58] INFO: Info message
+[2025-11-05 07:50:58] WARNING: Warning message
+[2025-11-05 07:50:58] ERROR: Error message
+[2025-11-05 07:50:59] DEBUG: Debug message
+[2025-11-05 07:50:59] INFO: Info message
+[2025-11-05 07:50:59] WARNING: Warning message
+[2025-11-05 07:50:59] ERROR: Error message
+[2025-11-05 08:40:22] INFO: Cache miss: Loading blog posts from database
+[2025-11-05 08:40:23] INFO: Cache miss: Loading categories from database

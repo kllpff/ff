@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo $title ?? 'FF Framework - Modern PHP MVC'; ?></title>
+    <link rel="stylesheet" href="/assets/css/design-system.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="navbar">
+        <div class="container flex items-center justify-between">
+            <div>
+                <a href="/" class="text-xl font-bold text-primary" style="text-decoration: none;">🚀 FF Framework</a>
+                <p class="text-sm text-muted">Fast, Secure & Flexible PHP MVC</p>
+            </div>
+            <nav class="flex gap-2">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/docs" class="nav-link">Documentation</a>
+                <a href="/blog" class="nav-link">Blog</a>
+                <?php if (session('auth_user')): ?>
+                    <a href="/dashboard" class="nav-link">Dashboard</a>
+                    <a href="/logout" class="btn btn-sm btn-accent">Logout</a>
+                <?php else: ?>
+                    <a href="/login" class="nav-link">Login</a>
+                    <a href="/register" class="btn btn-sm btn-primary">Register</a>
+                <?php endif; ?>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Flash Messages -->
+    <?php if (session('success')): ?>
+        <div class="container mt-4">
+            <div class="alert alert-success">
+                ✅ <?php echo h(session('success')); ?>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <?php if (session('error')): ?>
+        <div class="container mt-4">
+            <div class="alert alert-error">
+                ❌ <?php echo h(session('error')); ?>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <?php if (session('warning')): ?>
+        <div class="container mt-4">
+            <div class="alert alert-warning">
+                ⚠️ <?php echo h(session('warning')); ?>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <?php if (session('info')): ?>
+        <div class="container mt-4">
+            <div class="alert alert-info">
+                ℹ️ <?php echo h(session('info')); ?>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <!-- Main Content -->
+    <main>
+        <?php echo $__content ?? ''; ?>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container text-center">
+            <p class="text-sm">&copy; <?php echo date('Y'); ?> FF Framework. Modern PHP MVC Framework.</p>
+            <p class="text-xs text-muted mt-2">
+                <a href="https://github.com/kllpff/ff">GitHub</a> • 
+                <a href="/docs">Documentation</a> • 
+                <a href="https://kllpff.dev/ff">Website</a>
+            </p>
+        </div>
+    </footer>
+</body>
+</html>

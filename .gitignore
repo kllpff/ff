@@ -1,0 +1,50 @@
+# Composer
+vendor/
+composer.lock
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+
+# Logs
+tmp/logs/*
+!tmp/logs/.gitkeep
+
+# Cache
+tmp/cache/*
+!tmp/cache/.gitkeep
+
+# Sessions
+tmp/sessions/*
+!tmp/sessions/.gitkeep
+
+# Compiled views
+tmp/views/*
+!tmp/views/.gitkeep
+
+# Uploads
+public/uploads/*
+!public/uploads/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# PHP
+*.php~
+*.phtml~
+
+# Testing
+.phpunit.result.cache
+coverage/
