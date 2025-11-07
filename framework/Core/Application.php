@@ -115,7 +115,7 @@ class Application extends Container
 
     /**
      * Load environment variables from .env file
-     * 
+     *
      * @return self
      */
     public function loadEnvironment(): self
@@ -128,6 +128,7 @@ class Application extends Container
             }
         } catch (\Exception $e) {
             // .env file not found or cannot be loaded - that's okay
+            $this->logBootstrapError('loadEnvironment', $e);
         }
 
         return $this;
@@ -175,6 +176,36 @@ class Application extends Container
 
         // Also register a main config accessor
         $this->singleton('config', $configs);
+
+        return $this;
+    }
+
+    /**
+     * Validate the APP_KEY environment variable
+     *
+     * Ensures APP_KEY is set and meets minimum security requirements.
+     * Required for encryption and CSRF protection.
+     *
+     * @return self
+     * @throws \RuntimeException If APP_KEY is invalid
+     */
+    protected function validateAppKey(): self
+    {
+        $appKey = $_ENV['APP_KEY'] ?? env('APP_KEY', '');
+
+        if (empty($appKey)) {
+            throw new \RuntimeException(
+                'APP_KEY is not set. Please generate a secure key and add it to your .env file.'
+            );
+        }
+
+        // Check minimum length (32 characters recommended for encryption)
+        if (strlen($appKey) < 32) {
+            throw new \RuntimeException(
+                'APP_KEY is too short. It must be at least 32 characters long for security. ' .
+                'Current length: ' . strlen($appKey)
+            );
+        }
 
         return $this;
     }
@@ -230,10 +261,10 @@ class Application extends Container
 
     /**
      * Bootstrap the application
-     * 
+     *
      * Performs full initialization: load environment, load configuration,
      * register and boot service providers.
-     * 
+     *
      * @param array $providers Optional array of service providers to register
      * @return self
      */
@@ -250,6 +281,7 @@ class Application extends Container
 
         $this->loadEnvironment();
         $this->loadConfiguration();
+        $this->validateAppKey();
         $this->bootstrapLogger();
         $this->bootstrapDatabase();
         $this->bootstrapSession();
@@ -312,6 +344,7 @@ class Application extends Container
             });
         } catch (\Exception $e) {
             // Services failed to initialize - that's okay
+            $this->logBootstrapError('bootstrapLogger', $e);
         }
     }
 
@@ -339,6 +372,7 @@ class Application extends Container
             \FF\Database\Model::setConnection($connection);
         } catch (\Exception $e) {
             // Database connection not available - that's okay for some cases
+            $this->logBootstrapError('bootstrapDatabase', $e);
         }
     }
 
@@ -357,6 +391,7 @@ class Application extends Container
             $this->singleton('session', $session);
         } catch (\Exception $e) {
             // Session failed to initialize - that's okay
+            $this->logBootstrapError('bootstrapSession', $e);
         }
     }
 
@@ -375,6 +410,7 @@ class Application extends Container
                 $this->singleton('debugbar', $debugBar);
             } catch (\Exception $e) {
                 // DebugBar failed to load - that's okay
+                $this->logBootstrapError('bootstrapDebugBar', $e);
             }
         }
     }
@@ -411,11 +447,52 @@ class Application extends Container
 
     /**
      * Get the application environment
-     * 
+     *
      * @return string
      */
     public function getEnvironment(): string
     {
         return $_ENV['APP_ENV'] ?? env('APP_ENV', 'production');
+    }
+
+    /**
+     * Log bootstrap errors in debug mode
+     *
+     * Logs errors that occur during bootstrap to help with debugging.
+     * Only logs when APP_DEBUG is enabled.
+     *
+     * @param string $method The bootstrap method that failed
+     * @param \Exception $exception The exception that was caught
+     * @return void
+     */
+    protected function logBootstrapError(string $method, \Exception $exception): void
+    {
+        // Only log in debug mode
+        if (!$this->isDebugMode()) {
+            return;
+        }
+
+        // Try to use logger if available, otherwise use error_log
+        try {
+            if ($this->has('logger')) {
+                $logger = $this->make('logger');
+                $logger->warning("Bootstrap {$method} failed", [
+                    'error' => $exception->getMessage(),
+                    'file' => $exception->getFile(),
+                    'line' => $exception->getLine(),
+                ]);
+            } else {
+                // Fallback to error_log if logger not available yet
+                error_log(sprintf(
+                    "[FF Bootstrap Warning] %s failed: %s in %s:%d",
+                    $method,
+                    $exception->getMessage(),
+                    $exception->getFile(),
+                    $exception->getLine()
+                ));
+            }
+        } catch (\Exception $e) {
+            // If logging fails, fail silently to avoid breaking bootstrap
+        }
     }
 }

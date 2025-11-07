@@ -4,7 +4,6 @@ namespace FF\Core;
 
 use Closure;
 use ReflectionClass;
-use ReflectionMethod;
 
 /**
  * Container - Dependency Injection Container
@@ -23,10 +22,17 @@ class Container implements ContainerInterface
 
     /**
      * Array of singleton instances
-     * 
+     *
      * @var array
      */
     protected array $instances = [];
+
+    /**
+     * Stack of classes currently being resolved (for circular dependency detection)
+     *
+     * @var array
+     */
+    protected array $resolving = [];
 
     /**
      * Register a binding in the container
@@ -113,23 +119,37 @@ class Container implements ContainerInterface
 
     /**
      * Resolve a class by auto-injecting constructor dependencies
-     * 
+     *
      * Uses Reflection to analyze constructor parameters and auto-inject dependencies
-     * 
+     *
      * @param string $className The class name to resolve
      * @return mixed The instantiated class
      * @throws \Exception If constructor parameters cannot be resolved
      */
     protected function resolveClass(string $className)
     {
+        // Check for circular dependency
+        if (isset($this->resolving[$className])) {
+            $chain = array_keys($this->resolving);
+            $chain[] = $className;
+            throw new \Exception(
+                "Circular dependency detected: " . implode(' -> ', $chain)
+            );
+        }
+
+        // Mark this class as being resolved
+        $this->resolving[$className] = true;
+
         try {
             $reflection = new ReflectionClass($className);
         } catch (\ReflectionException $e) {
+            unset($this->resolving[$className]);
             throw new \Exception("Cannot resolve class '{$className}': {$e->getMessage()}");
         }
 
         // Check if class is instantiable
         if (!$reflection->isInstantiable()) {
+            unset($this->resolving[$className]);
             throw new \Exception("Class '{$className}' is not instantiable");
         }
 
@@ -154,6 +174,7 @@ class Container implements ContainerInterface
                 if ($parameter->isDefaultValueAvailable()) {
                     $dependencies[] = $parameter->getDefaultValue();
                 } else {
+                    unset($this->resolving[$className]);
                     throw new \Exception(
                         "Cannot resolve parameter '{$parameter->getName()}' in {$className}::__construct()"
                     );
@@ -161,7 +182,8 @@ class Container implements ContainerInterface
                 continue;
             }
 
-            $typeName = $type->getName();
+            // Get type name (supporting both ReflectionType and ReflectionNamedType)
+            $typeName = $type instanceof \ReflectionNamedType ? $type->getName() : (string)$type;
 
             // Try to resolve the dependency
             if ($this->has($typeName)) {
@@ -171,6 +193,7 @@ class Container implements ContainerInterface
             } else if ($parameter->isDefaultValueAvailable()) {
                 $dependencies[] = $parameter->getDefaultValue();
             } else {
+                unset($this->resolving[$className]);
                 throw new \Exception(
                     "Cannot resolve type '{$typeName}' for parameter '{$parameter->getName()}' in {$className}::__construct()"
                 );
@@ -178,7 +201,12 @@ class Container implements ContainerInterface
         }
 
         // Instantiate with resolved dependencies
-        return new $className(...$dependencies);
+        $instance = new $className(...$dependencies);
+
+        // Remove from resolving stack after successful resolution
+        unset($this->resolving[$className]);
+
+        return $instance;
     }
 
     /**
@@ -205,12 +233,13 @@ class Container implements ContainerInterface
 
     /**
      * Clear all instances and bindings
-     * 
+     *
      * @return void
      */
     public function flush(): void
     {
         $this->bindings = [];
         $this->instances = [];
+        $this->resolving = [];
     }
 }

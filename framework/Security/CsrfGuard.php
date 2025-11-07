@@ -3,7 +3,6 @@
 namespace FF\Security;
 
 use FF\Http\Request;
-use FF\Http\Response;
 
 /**
  * CsrfGuard - CSRF Protection

@@ -3,7 +3,6 @@
 namespace FF\Http\Middleware;
 
 use FF\Http\Request;
-use FF\Http\Response;
 use FF\Security\RateLimiter;
 use FF\Cache\Cache;
 use Closure;

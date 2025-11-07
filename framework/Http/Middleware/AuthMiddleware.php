@@ -3,7 +3,6 @@
 namespace FF\Http\Middleware;
 
 use FF\Http\Request;
-use FF\Http\Response;
 use FF\Session\SessionManager;
 use Closure;
 
