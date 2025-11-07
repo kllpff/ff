@@ -3,7 +3,7 @@
 namespace App\Events;
 
 use App\Models\Post;
-use FF\Framework\Events\Event;
+use FF\Events\Event;
 
 /**
  * PostCreated Event

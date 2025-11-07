@@ -10,7 +10,7 @@
 
 namespace App\Middleware;
 
-use FF\Framework\Http\Middleware\MiddlewareInterface;
+use FF\Http\Middleware\MiddlewareInterface;
 
 class LogRequests implements MiddlewareInterface
 {

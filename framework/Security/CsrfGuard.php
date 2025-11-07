@@ -1,9 +1,9 @@
 <?php
 
-namespace FF\Framework\Security;
+namespace FF\Security;
 
-use FF\Framework\Http\Request;
-use FF\Framework\Http\Response;
+use FF\Http\Request;
+use FF\Http\Response;
 
 /**
  * CsrfGuard - CSRF Protection

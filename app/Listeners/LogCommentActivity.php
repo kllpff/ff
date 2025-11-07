@@ -17,10 +17,26 @@ class LogCommentActivity
     public function handle(CommentAdded $event): void
     {
         try {
-            $logMessage = "[Comment Added] ID: {$event->commentId}, Post: {$event->postId}, Author: {$event->authorName}";
-            error_log($logMessage);
+            // PII-safe logging: avoid author name and comment text
+            \logger()->info('Comment added', [
+                'event' => 'CommentAdded',
+                'comment_id' => $event->commentId,
+                'post_id' => $event->postId,
+                'method' => $_SERVER['REQUEST_METHOD'] ?? null,
+                'uri' => $_SERVER['REQUEST_URI'] ?? null,
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+            ]);
         } catch (\Exception $e) {
-            error_log("[Event Error] Failed to handle CommentAdded: " . $e->getMessage());
+            \logger()->error('Failed to handle CommentAdded', [
+                'event' => 'CommentAdded',
+                'comment_id' => $event->commentId,
+                'post_id' => $event->postId,
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+                'method' => $_SERVER['REQUEST_METHOD'] ?? null,
+                'uri' => $_SERVER['REQUEST_URI'] ?? null,
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+            ]);
         }
     }
 }

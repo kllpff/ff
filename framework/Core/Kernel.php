@@ -1,11 +1,12 @@
 <?php
 
-namespace FF\Framework\Core;
+namespace FF\Core;
 
-use FF\Framework\Http\Request;
-use FF\Framework\Http\Response;
-use FF\Framework\Http\Router;
-use FF\Framework\Debug\ExceptionHandler;
+use FF\Http\Request;
+use FF\Http\Response;
+use FF\Http\Router;
+use FF\Debug\ExceptionHandler;
+use FF\Http\Middleware\MiddlewareInterface;
 
 /**
  * Kernel - HTTP Kernel
@@ -73,8 +74,11 @@ class Kernel
         // Load routes from config
         $this->loadRoutes($router);
 
-        // Dispatch the request to the router
-        $response = $router->dispatch($request);
+        $destination = function (Request $request) use ($router) {
+            return $router->dispatch($request);
+        };
+
+        $response = $this->runMiddlewarePipeline($request, $destination);
 
         // Ensure we have a Response object
         if (!($response instanceof Response)) {
@@ -141,5 +145,64 @@ class Kernel
     public function getMiddleware(): array
     {
         return $this->middleware;
+    }
+
+    /**
+     * Execute the middleware pipeline.
+     *
+     * @param Request $request
+     * @param callable $destination
+     * @return mixed
+     */
+    protected function runMiddlewarePipeline(Request $request, callable $destination)
+    {
+        $pipeline = array_reduce(
+            array_reverse($this->middleware),
+            function (callable $next, $middleware) {
+                return $this->wrapMiddleware($middleware, $next);
+            },
+            $destination
+        );
+
+        return $pipeline($request);
+    }
+
+    /**
+     * Wrap a middleware around the next callable in the chain.
+     *
+     * @param string|MiddlewareInterface $middleware
+     * @param callable $next
+     * @return callable
+     */
+    protected function wrapMiddleware($middleware, callable $next): callable
+    {
+        return function (Request $request) use ($middleware, $next) {
+            $instance = $this->resolveMiddleware($middleware);
+
+            return $instance->handle($request, function (Request $request) use ($next) {
+                return $next($request);
+            });
+        };
+    }
+
+    /**
+     * Resolve a middleware definition to an instance.
+     *
+     * @param string|MiddlewareInterface $middleware
+     * @return MiddlewareInterface
+     */
+    protected function resolveMiddleware($middleware): MiddlewareInterface
+    {
+        if (is_string($middleware)) {
+            $instance = $this->app->make($middleware);
+        } else {
+            $instance = $middleware;
+        }
+
+        if (!$instance instanceof MiddlewareInterface) {
+            throw new \Exception('Invalid middleware provided to kernel.');
+        }
+
+        return $instance;
     }
 }

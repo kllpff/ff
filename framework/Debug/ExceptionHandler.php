@@ -1,9 +1,10 @@
 <?php
 
-namespace FF\Framework\Debug;
+namespace FF\Debug;
 
-use FF\Framework\Core\Application;
-use FF\Framework\Http\Response;
+use FF\Core\Application;
+use FF\Http\Response;
+use FF\Log\Logger;
 use Throwable;
 
 /**
@@ -58,17 +59,28 @@ class ExceptionHandler
      */
     protected function log(Throwable $e): void
     {
-        // Basic logging - can be enhanced later
-        error_log(
-            sprintf(
-                "[%s] %s: %s in %s:%d",
-                date('Y-m-d H:i:s'),
-                get_class($e),
-                $e->getMessage(),
-                $e->getFile(),
-                $e->getLine()
-            )
+        // Centralized structured logging
+        $message = sprintf(
+            '%s: %s in %s:%d',
+            get_class($e),
+            $e->getMessage(),
+            $e->getFile(),
+            $e->getLine()
         );
+
+        $context = [
+            'code' => $e->getCode(),
+            'method' => $_SERVER['REQUEST_METHOD'] ?? null,
+            'uri' => $_SERVER['REQUEST_URI'] ?? null,
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+            'user_id' => function_exists('session') ? (session()->get('auth_user_id') ?? null) : null,
+            'request_id' => function_exists('request_id') ? request_id() : null,
+        ];
+
+        // Use application logger singleton
+        /** @var Logger $logger */
+        $logger = $this->app->make(Logger::class);
+        $logger->error($message, $context);
     }
 
     /**

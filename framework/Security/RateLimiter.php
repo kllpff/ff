@@ -1,8 +1,8 @@
 <?php
 
-namespace FF\Framework\Security;
+namespace FF\Security;
 
-use FF\Framework\Cache\Cache;
+use FF\Cache\Cache;
 
 /**
  * RateLimiter - Rate Limiting
@@ -39,14 +39,13 @@ class RateLimiter
      */
     public function isLimited(string $key, int $maxAttempts = 60, int $decayMinutes = 1): bool
     {
-        $cacheKey = "rate_limit:{$key}";
-        $attempts = (int)$this->cache->get($cacheKey, 0);
+        $cacheKey = $this->cacheKey($key);
 
-        if ($attempts >= $maxAttempts) {
-            return true;
-        }
+        return $this->withLock($cacheKey, function () use ($cacheKey, $maxAttempts, $decayMinutes) {
+            $state = $this->getState($cacheKey, $decayMinutes);
 
-        return false;
+            return $state['attempts'] >= $maxAttempts;
+        });
     }
 
     /**
@@ -58,13 +57,18 @@ class RateLimiter
      */
     public function recordAttempt(string $key, int $decayMinutes = 1): int
     {
-        $cacheKey = "rate_limit:{$key}";
-        $attempts = (int)$this->cache->get($cacheKey, 0);
-        $attempts++;
+        $cacheKey = $this->cacheKey($key);
 
-        $this->cache->put($cacheKey, $attempts, $decayMinutes);
+        return $this->withLock($cacheKey, function () use ($cacheKey, $decayMinutes) {
+            $state = $this->getState($cacheKey, $decayMinutes);
 
-        return $attempts;
+            $state['attempts']++;
+            $state['expires_at'] = time() + ($decayMinutes * 60);
+
+            $this->storeState($cacheKey, $state, $decayMinutes);
+
+            return $state['attempts'];
+        });
     }
 
     /**
@@ -76,10 +80,10 @@ class RateLimiter
      */
     public function getRemaining(string $key, int $maxAttempts = 60): int
     {
-        $cacheKey = "rate_limit:{$key}";
-        $attempts = (int)$this->cache->get($cacheKey, 0);
+        $cacheKey = $this->cacheKey($key);
+        $state = $this->getState($cacheKey);
 
-        return max(0, $maxAttempts - $attempts);
+        return max(0, $maxAttempts - $state['attempts']);
     }
 
     /**
@@ -90,8 +94,11 @@ class RateLimiter
      */
     public function reset(string $key): void
     {
-        $cacheKey = "rate_limit:{$key}";
-        $this->cache->forget($cacheKey);
+        $cacheKey = $this->cacheKey($key);
+
+        $this->withLock($cacheKey, function () use ($cacheKey) {
+            $this->cache->forget($cacheKey);
+        });
     }
 
     /**
@@ -103,15 +110,16 @@ class RateLimiter
      */
     public function getRetryAfter(string $key, int $decayMinutes = 1): int
     {
-        $cacheKey = "rate_limit:{$key}";
-        $attempts = (int)$this->cache->get($cacheKey, 0);
+        $cacheKey = $this->cacheKey($key);
+        $state = $this->getState($cacheKey, $decayMinutes);
 
-        if ($attempts === 0) {
+        if ($state['attempts'] === 0 || $state['expires_at'] === null) {
             return 0;
         }
 
-        // This is approximate since cache expiration isn't tracked precisely
-        return $decayMinutes * 60;
+        $remaining = $state['expires_at'] - time();
+
+        return $remaining > 0 ? $remaining : 0;
     }
 
     /**
@@ -151,5 +159,79 @@ class RateLimiter
     public function limitByEndpoint(string $endpoint, int $maxAttempts = 100, int $decayMinutes = 1): bool
     {
         return $this->isLimited("endpoint:{$endpoint}", $maxAttempts, $decayMinutes);
+    }
+
+    /**
+     * Generate namespaced cache key.
+     */
+    protected function cacheKey(string $key): string
+    {
+        return "rate_limit:" . $key;
+    }
+
+    /**
+     * Retrieve the current state from cache, normalising data.
+     */
+    protected function getState(string $cacheKey, int $decayMinutes = 1): array
+    {
+        $state = $this->cache->get($cacheKey);
+
+        if (!is_array($state) ||
+            !isset($state['attempts']) ||
+            !isset($state['expires_at']) ||
+            !is_int($state['attempts']) ||
+            (!is_int($state['expires_at']) && !is_null($state['expires_at']))
+        ) {
+            $state = [
+                'attempts' => 0,
+                'expires_at' => null,
+            ];
+        }
+
+        if ($state['expires_at'] !== null && $state['expires_at'] <= time()) {
+            $state = [
+                'attempts' => 0,
+                'expires_at' => time() + ($decayMinutes * 60),
+            ];
+            $this->storeState($cacheKey, $state, $decayMinutes);
+        }
+
+        return $state;
+    }
+
+    /**
+     * Persist rate limit state into cache.
+     */
+    protected function storeState(string $cacheKey, array $state, int $decayMinutes): void
+    {
+        $this->cache->put($cacheKey, $state, $decayMinutes * 60);
+    }
+
+    /**
+     * Execute callback with a file-based mutex to ensure atomic operations.
+     *
+     * @template T
+     * @param callable():T $callback
+     * @return mixed
+     */
+    protected function withLock(string $cacheKey, callable $callback)
+    {
+        $lockPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ff_rate_limit_' . sha1($cacheKey) . '.lock';
+        $handle = fopen($lockPath, 'c');
+
+        if ($handle === false) {
+            return $callback();
+        }
+
+        try {
+            if (!flock($handle, LOCK_EX)) {
+                return $callback();
+            }
+
+            return $callback();
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
     }
 }

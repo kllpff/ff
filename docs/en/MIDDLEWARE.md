@@ -10,7 +10,7 @@ Use middleware to filter HTTP requests and responses.
 
 namespace App\Middleware;
 
-use FF\Framework\Http\Middleware\MiddlewareInterface;
+use FF\Http\Middleware\MiddlewareInterface;
 
 class LogRequests implements MiddlewareInterface
 {

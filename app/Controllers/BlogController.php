@@ -5,9 +5,9 @@ namespace App\Controllers;
 use App\Models\Post;
 use App\Models\Category;
 use App\Models\User;
-use FF\Framework\Http\Response;
-use FF\Framework\Cache\Cache;
-use FF\Framework\Log\Logger;
+use FF\Http\Response;
+use FF\Cache\Cache;
+use FF\Log\Logger;
 
 /**
  * BlogController

@@ -1,9 +1,9 @@
 <?php
 
-namespace FF\Framework\Console\Commands;
+namespace FF\Console\Commands;
 
-use FF\Framework\Console\Command;
-use FF\Framework\Database\Migrator;
+use FF\Console\Command;
+use FF\Database\Migrator;
 
 /**
  * MigrateRollbackCommand - Rollback all migrations

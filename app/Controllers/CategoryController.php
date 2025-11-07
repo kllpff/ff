@@ -3,11 +3,11 @@
 namespace App\Controllers;
 
 use App\Models\Category;
-use FF\Framework\Http\Request;
-use FF\Framework\Http\Response;
-use FF\Framework\Validation\Validator;
-use FF\Framework\Log\Logger;
-use FF\Framework\Cache\Cache;
+use FF\Http\Request;
+use FF\Http\Response;
+use FF\Validation\Validator;
+use FF\Log\Logger;
+use FF\Cache\Cache;
 
 /**
  * CategoryController
@@ -49,6 +49,10 @@ class CategoryController
      */
     public function index(): Response
     {
+        if ($redirect = $this->ensureAuthenticated()) {
+            return $redirect;
+        }
+
         $this->logger->debug('Loading categories list');
         
         $categories = Category::all();
@@ -70,6 +74,10 @@ class CategoryController
      */
     public function create(): Response
     {
+        if ($redirect = $this->ensureAuthenticated()) {
+            return $redirect;
+        }
+
         $content = view('categories/create', [
             'title' => 'Create Category - FF Framework'
         ]);
@@ -87,6 +95,10 @@ class CategoryController
      */
     public function store(Request $request): Response
     {
+        if ($redirect = $this->ensureAuthenticated()) {
+            return $redirect;
+        }
+
         $this->logger->info('Creating new category');
 
         // Validate input
@@ -145,6 +157,10 @@ class CategoryController
      */
     public function edit(Request $request, int $id): Response
     {
+        if ($redirect = $this->ensureAuthenticated()) {
+            return $redirect;
+        }
+
         $category = Category::find($id);
 
         if (!$category) {
@@ -171,6 +187,10 @@ class CategoryController
      */
     public function update(Request $request, int $id): Response
     {
+        if ($redirect = $this->ensureAuthenticated()) {
+            return $redirect;
+        }
+
         $this->logger->info('Updating category', ['category_id' => $id]);
 
         $category = Category::find($id);
@@ -240,6 +260,10 @@ class CategoryController
      */
     public function destroy(Request $request, int $id): Response
     {
+        if ($redirect = $this->ensureAuthenticated()) {
+            return $redirect;
+        }
+
         $this->logger->info('Deleting category', ['category_id' => $id]);
 
         $category = Category::find($id);
@@ -272,5 +296,18 @@ class CategoryController
 
         session()->flash('success', 'Category deleted successfully!');
         return redirect('/dashboard/categories');
+    }
+
+    /**
+     * Ensure only authenticated sessions reach dashboard controllers.
+     */
+    protected function ensureAuthenticated(): ?Response
+    {
+        if (!session('auth_user_id')) {
+            session()->flash('error', 'Please log in to continue.');
+            return redirect('/login');
+        }
+
+        return null;
     }
 }

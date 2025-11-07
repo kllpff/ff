@@ -10,7 +10,7 @@
                 <h2 class="text-2xl font-bold mb-4">Creating Events</h2>
                 <pre class="code-block">namespace App\Events;
 
-use FF\Framework\Events\Event;
+use FF\Events\Event;
 
 class UserRegistered extends Event
 {
@@ -48,7 +48,7 @@ class SendWelcomeEmail
 
             <div class="card mb-6">
                 <h2 class="text-2xl font-bold mb-4">Dispatching Events</h2>
-                <pre class="code-block">use FF\Framework\Events\EventDispatcher;
+                <pre class="code-block">use FF\Events\EventDispatcher;
 
 $dispatcher = app(EventDispatcher::class);
 $dispatcher->dispatch(new UserRegistered($user));</pre>

@@ -25,6 +25,27 @@ logger()->critical('Critical error');</pre>
             </div>
 
             <div class="card mb-6">
+                <h2 class="text-2xl font-bold mb-4">Correlation ID</h2>
+                <p class="text-secondary mb-3">Each request gets an ID for tracing across logs and services.</p>
+                <ul class="space-y-1 mb-3">
+                    <li>• Incoming <code class="code-inline">X-Request-ID</code> is respected if valid</li>
+                    <li>• ID available via <code class="code-inline">request_id()</code> helper</li>
+                    <li>• Response includes <code class="code-inline">X-Request-ID</code> header</li>
+                </ul>
+                <pre class="code-block">// In middleware pipeline (enabled globally)
+// logger context example
+logger()->info('Order created', [
+    'order_id' => $order->id,
+    'request_id' => request_id(),
+    'method' => $_SERVER['REQUEST_METHOD'] ?? null,
+    'uri' => $_SERVER['REQUEST_URI'] ?? null,
+]);
+
+// Client can send X-Request-ID; otherwise framework generates one
+// Response will always include X-Request-ID</pre>
+            </div>
+
+            <div class="card mb-6">
                 <h2 class="text-2xl font-bold mb-4">Log File Location</h2>
                 <p class="text-secondary">Logs are stored in <code class="code-inline">storage/logs/app.log</code></p>
             </div>

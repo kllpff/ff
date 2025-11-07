@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Core;
+namespace FF\Core;
 
 /**
  * ContainerInterface - Dependency Injection Container Interface

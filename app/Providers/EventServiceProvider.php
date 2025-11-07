@@ -2,8 +2,8 @@
 
 namespace App\Providers;
 
-use FF\Framework\Core\ServiceProvider;
-use FF\Framework\Events\EventDispatcher;
+use FF\Core\ServiceProvider;
+use FF\Events\EventDispatcher;
 use App\Events\PostCreated;
 use App\Events\PostUpdated;
 use App\Events\PostDeleted;

@@ -7,6 +7,7 @@
         <div class="max-w-2xl mx-auto">
             <div class="card">
                 <form method="POST" action="/dashboard/profile">
+                    <?php echo csrf_field(); ?>
                     <div class="form-group">
                         <label for="name" class="form-label">Name</label>
                         <input type="text" id="name" name="name" class="form-input" value="<?php echo h($user->name); ?>" required>

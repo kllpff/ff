@@ -8,6 +8,7 @@
                 <p class="text-secondary mb-6">Create a new account</p>
 
                 <form method="POST" action="/register">
+                    <?php echo csrf_field(); ?>
                     <div class="form-group">
                         <label for="name" class="form-label">Name</label>
                         <input type="text" id="name" name="name" class="form-input" required>

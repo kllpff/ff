@@ -12,7 +12,7 @@ Models are in `app/Models/`:
 
 namespace App\Models;
 
-use FF\Framework\Database\Model;
+use FF\Database\Model;
 
 class User extends Model
 {

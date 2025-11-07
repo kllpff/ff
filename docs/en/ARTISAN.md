@@ -76,14 +76,14 @@ php artisan migrate --verbose
 
 ## Creating Custom Commands
 
-You can create custom Artisan commands by extending the `FF\Framework\Console\Command` class:
+You can create custom Artisan commands by extending the `FF\Console\Command` class:
 
 ```php
 <?php
 
 namespace App\Console\Commands;
 
-use FF\Framework\Console\Command;
+use FF\Console\Command;
 
 class CustomCommand extends Command
 {

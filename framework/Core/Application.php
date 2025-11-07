@@ -1,8 +1,8 @@
 <?php
 
-namespace FF\Framework\Core;
+namespace FF\Core;
 
-use Dotenv\Dotenv;
+use FF\Support\DotEnv;
 
 /**
  * Application - Main Application Class
@@ -123,7 +123,7 @@ class Application extends Container
         try {
             $envPath = $this->basePath('.env');
             if (file_exists($envPath)) {
-                $dotenv = Dotenv::createImmutable($this->basePath());
+                $dotenv = DotEnv::createImmutable($this->basePath());
                 $dotenv->load();
             }
         } catch (\Exception $e) {
@@ -276,32 +276,39 @@ class Application extends Container
     {
         try {
             $logFile = $this->basePath('storage/logs/app.log');
-            $logger = new \FF\Framework\Log\Logger($logFile);
+            $logger = new \FF\Log\Logger($logFile);
             $this->singleton('logger', $logger);
-            $this->singleton(\FF\Framework\Log\Logger::class, $logger);
+            $this->singleton(\FF\Log\Logger::class, $logger);
             
             // Register other services
             $this->singleton('cache', function() {
                 $cacheDriver = $_ENV['CACHE_DRIVER'] ?? env('CACHE_DRIVER', 'array');
-                return new \FF\Framework\Cache\Cache($cacheDriver, $this->basePath('storage/cache'));
+                return new \FF\Cache\Cache($cacheDriver, $this->basePath('storage/cache'));
             });
-            $this->singleton(\FF\Framework\Cache\Cache::class, function() {
+            $this->singleton(\FF\Cache\Cache::class, function() {
                 return $this->make('cache');
             });
             
             $this->singleton('rateLimiter', function() {
-                return new \FF\Framework\Security\RateLimiter($this->make('cache'));
+                return new \FF\Security\RateLimiter($this->make('cache'));
             });
-            $this->singleton(\FF\Framework\Security\RateLimiter::class, function() {
+            $this->singleton(\FF\Security\RateLimiter::class, function() {
                 return $this->make('rateLimiter');
             });
             
             $this->singleton('encrypt', function() {
                 $key = $_ENV['APP_KEY'] ?? env('APP_KEY', '');
-                return new \FF\Framework\Security\Encrypt($key);
+                return new \FF\Security\Encrypt($key);
             });
-            $this->singleton(\FF\Framework\Security\Encrypt::class, function() {
+            $this->singleton(\FF\Security\Encrypt::class, function() {
                 return $this->make('encrypt');
+            });
+
+            $this->singleton('csrf', function() {
+                return new \FF\Security\CsrfGuard($this->make(\FF\Security\Encrypt::class));
+            });
+            $this->singleton(\FF\Security\CsrfGuard::class, function() {
+                return $this->make('csrf');
             });
         } catch (\Exception $e) {
             // Services failed to initialize - that's okay
@@ -319,7 +326,7 @@ class Application extends Container
     {
         try {
             // Create database connection with config array
-            $connection = new \FF\Framework\Database\Connection([
+            $connection = new \FF\Database\Connection([
                 'driver' => $_ENV['DB_CONNECTION'] ?? env('DB_CONNECTION', 'mysql'),
                 'host' => $_ENV['DB_HOST'] ?? env('DB_HOST', 'localhost'),
                 'username' => $_ENV['DB_USERNAME'] ?? env('DB_USERNAME', 'root'),
@@ -329,7 +336,7 @@ class Application extends Container
             ]);
             
             // Set connection on all models
-            \FF\Framework\Database\Model::setConnection($connection);
+            \FF\Database\Model::setConnection($connection);
         } catch (\Exception $e) {
             // Database connection not available - that's okay for some cases
         }
@@ -345,7 +352,8 @@ class Application extends Container
     protected function bootstrapSession(): void
     {
         try {
-            $session = new \FF\Framework\Session\SessionManager();
+            $sessionConfig = config('session', []);
+            $session = new \FF\Session\SessionManager($sessionConfig);
             $this->singleton('session', $session);
         } catch (\Exception $e) {
             // Session failed to initialize - that's okay
@@ -363,7 +371,7 @@ class Application extends Container
     {
         if ($this->isDebugMode()) {
             try {
-                $debugBar = new \FF\Framework\Debug\DebugBar(true);
+                $debugBar = new \FF\Debug\DebugBar(true);
                 $this->singleton('debugbar', $debugBar);
             } catch (\Exception $e) {
                 // DebugBar failed to load - that's okay

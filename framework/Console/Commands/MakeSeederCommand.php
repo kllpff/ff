@@ -1,38 +1,48 @@
 <?php
 
-namespace FF\Framework\Console\Commands;
+namespace FF\Console\Commands;
 
-use FF\Framework\Console\Command;
+use FF\Console\Command;
+use FF\Console\Concerns\SanitizesGeneratorInput;
 
 /**
  * MakeSeederCommand - Generate a new seeder file
  */
 class MakeSeederCommand extends Command
 {
+    use SanitizesGeneratorInput;
+
     protected string $name = 'make:seeder';
     protected string $description = 'Create a new seeder class';
 
     public function handle(): int
     {
-        $name = $this->argument('name') ?? $this->prompt('Seeder name: ');
+        $rawName = $this->readGeneratorArgument() ?? $this->prompt('Seeder name: ');
+        $name = $this->sanitizeClassName($rawName);
 
         if (!$name) {
-            $this->error('Seeder name is required');
+            $this->error('Seeder name is required and must only contain letters, numbers, and underscores.');
             return 1;
         }
 
-        $path = base_path("database/seeders/$name.php");
+        $path = $this->resolveClassPath('database/seeders', $name);
+        if (file_exists($path)) {
+            $this->error("Seeder {$name} already exists");
+            return 1;
+        }
+
         @mkdir(dirname($path), 0755, true);
 
-        $class = basename($name, '.php');
-        $namespace = 'Database\Seeders';
+        $segments = explode('\\', $name);
+        $class = array_pop($segments);
+        $namespace = 'Database\Seeders' . (!empty($segments) ? '\\' . implode('\\', $segments) : '');
 
         $stub = <<<PHP
 <?php
 
 namespace $namespace;
 
-use FF\Framework\Database\Seeder;
+use FF\Database\Seeder;
 
 class $class extends Seeder
 {
@@ -45,23 +55,7 @@ PHP;
 
         file_put_contents($path, $stub);
 
-        $this->info("Seeder $name created successfully!");
+        $this->info("Seeder {$name} created successfully!");
         return 0;
-    }
-
-    protected function prompt(string $message): ?string
-    {
-        echo $message;
-        return trim(fgets(STDIN));
-    }
-
-    protected function argument(string $name): ?string
-    {
-        foreach ($_SERVER['argv'] as $key => $arg) {
-            if ($arg === 'make:seeder' && isset($_SERVER['argv'][$key + 1])) {
-                return $_SERVER['argv'][$key + 1];
-            }
-        }
-        return null;
     }
 }

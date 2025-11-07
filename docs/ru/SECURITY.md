@@ -7,7 +7,7 @@
 Всегда хешируйте пароли:
 
 ```php
-use FF\Framework\Security\Hash;
+use FF\Security\Hash;
 
 // Хешировать
 $hashed = Hash::make('password123');
@@ -30,15 +30,20 @@ User::create([
 Шифрование чувствительных данных:
 
 ```php
-// Зашифровать
-$encrypted = encrypt('номер-кредитной-карты');
+use FF\Security\Encrypt;
 
-// Расшифровать
-$decrypted = decrypt($encrypted);
+// Использование сервиса из контейнера
+$encryptor = app('encrypt');
+$encrypted = $encryptor->encrypt('номер-кредитной-карты');
+$decrypted = $encryptor->decrypt($encrypted);
+
+// Или через статические методы
+$encrypted = Encrypt::hash('номер-кредитной-карты');
+$decrypted = Encrypt::reveal($encrypted);
 
 // Сохранить зашифрованное
 User::create([
-    'ssn' => encrypt('123-45-6789'),
+    'ssn' => $encryptor->encrypt('123-45-6789'),
 ]);
 ```
 
@@ -46,9 +51,9 @@ User::create([
 
 Защита форм от атак:
 
-```html
+```php
 <form method="POST" action="/users">
-    {{ csrf_field() }}
+    <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
     <!-- поля формы -->
 </form>
 ```
@@ -88,6 +93,27 @@ User::create($validated);
 <p><?php echo htmlspecialchars($user->name, ENT_QUOTES, 'UTF-8'); ?></p>
 ```
 
+## Санитайзинг HTML-контента
+
+При рендеринге HTML, сгенерированного пользователем (например, тело поста или комментарий), обязательно санитизируйте контент и разрешайте только белый список тегов/атрибутов. Экранирование само по себе недостаточно для форматированного текста; комбинируйте санитизацию с явным рендерингом.
+
+```php
+// Пример: санитизировать HTML с помощью библиотеки или внутреннего санитайзера
+$raw = $request->input('content');
+$clean = Sanitizer::cleanHtml($raw); // или используйте HTML Purifier и т.п.
+
+// Рендерить доверенный HTML явно
+echo raw_html($clean);
+```
+
+Рекомендации:
+
+- Используйте `raw_html()` только для доверенного, санитизированного HTML.
+- Никогда не выводите сырой пользовательский ввод напрямую.
+- Предпочитайте `h()` для заголовков, простого текста и атрибутов.
+- Поддерживайте белый список разрешенных тегов (например, `p`, `strong`, `em`, `ul`, `li`, `a`) и безопасных атрибутов (`href`, `title`) с корректной валидацией.
+
+
 ## Предотвращение SQL-инъекций
 
 Используйте QueryBuilder (безопасно):
@@ -105,20 +131,20 @@ $user = DB::query("SELECT * FROM users WHERE email = '" . $email . "'");
 Предотвращение брутфорс-атак:
 
 ```php
-use FF\Framework\Security\RateLimiter;
+use FF\Security\RateLimiter;
 
-$limiter = new RateLimiter();
+$limiter = app('rateLimiter');
 
 public function login(Request $request)
 {
     $identifier = "login:" . $request->ip();
-    
-    if ($limiter->tooManyAttempts($identifier, 5)) {
-        return error('Слишком много попыток входа');
+
+    if ($limiter->isLimited($identifier, 5, 15)) {
+        return response()->json(['error' => 'Слишком много попыток входа'], 429);
     }
-    
+
     $limiter->recordAttempt($identifier, 15); // 15 минутное окно
-    
+
     // Аутентификация...
 }
 ```
@@ -173,26 +199,38 @@ return response($content)
 ## Безопасность загрузки файлов
 
 ```php
+use FF\Http\Request;
+
 public function upload(Request $request)
 {
+    // Валидация: обязательный файл, только jpg|png, размер до 2 МБ
     $request->validate([
         'file' => 'required|file|mimes:jpg,png|max:2048',
     ]);
-    
+
     $file = $request->file('file');
-    
-    // Проверить MIME-тип
+
+    // Дополнительная проверка MIME по содержимому файла
     $allowed = ['image/jpeg', 'image/png'];
-    if (!in_array($file->getMimeType(), $allowed)) {
+    if (!in_array($file->getMimeType(), $allowed, true)) {
         return error('Неверный тип файла');
     }
-    
-    // Сохранить в хранилище (вне public)
-    $path = $file->move(storage_path('uploads'));
-    
+
+    // Безопасное перемещение: разрешены ТОЛЬКО public/uploads и storage/uploads
+    // Публичные аватары/картинки:
+    $path = $file->moveToPublicUploads('avatar_' . time() . '.jpg');
+
+    // Приватные документы (вне публичной директории):
+    // $path = $file->moveToStorageUploads('doc_' . time() . '.pdf');
+
     return $path;
 }
 ```
+
+Примечания:
+- Правило `max` для файлов измеряется в килобайтах: `max:2048` ≈ 2 МБ.
+- `UploadedFile::moveToPublicUploads()` и `moveToStorageUploads()` внутри проверяют путь и запретят сохранение вне `public/uploads` или `storage/uploads`.
+- Для чувствительных данных используйте `storage/uploads`; для общедоступных изображений — `public/uploads`.
 
 ## Переменные окружения
 

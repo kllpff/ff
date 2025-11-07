@@ -7,6 +7,7 @@
         <div class="max-w-2xl mx-auto">
             <div class="card">
                 <form method="POST" action="/dashboard/categories/<?php echo $category->id; ?>">
+                    <?php echo csrf_field(); ?>
                     <input type="hidden" name="_method" value="PUT">
 
                     <div class="form-group">

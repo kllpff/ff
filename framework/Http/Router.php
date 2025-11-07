@@ -1,9 +1,10 @@
 <?php
 
-namespace FF\Framework\Http;
+namespace FF\Http;
 
 use Closure;
-use FF\Framework\Core\Container;
+use FF\Core\Container;
+use FF\Http\Middleware\MiddlewareInterface;
 
 /**
  * Route - HTTP Route Definition
@@ -55,6 +56,13 @@ class Route
     protected array $parameters = [];
 
     /**
+     * Parameter constraints (regex patterns)
+     *
+     * @var array<string,string>
+     */
+    protected array $constraints = [];
+
+    /**
      * Create a new Route instance
      * 
      * @param array $methods The HTTP methods
@@ -76,12 +84,30 @@ class Route
      */
     public function middleware($middleware): self
     {
-        if (is_string($middleware)) {
-            $this->middleware[] = $middleware;
-        } else if (is_array($middleware)) {
-            $this->middleware = array_merge($this->middleware, $middleware);
+        if (is_array($middleware)) {
+            foreach ($middleware as $entry) {
+                $this->pushMiddleware($entry);
+            }
+            return $this;
         }
+
+        $this->pushMiddleware($middleware);
         return $this;
+    }
+
+    /**
+     * Normalize middleware definition before storing.
+     *
+     * @param mixed $middleware
+     * @return void
+     */
+    protected function pushMiddleware($middleware): void
+    {
+        if ($middleware === null) {
+            return;
+        }
+
+        $this->middleware[] = $middleware;
     }
 
     /**
@@ -166,6 +192,41 @@ class Route
     {
         $this->parameters = $parameters;
         return $this;
+    }
+
+    /**
+     * Define parameter constraints for the route.
+     *
+     * Examples:
+     *  $route->where('id', '[0-9]+');
+     *  $route->where(['slug' => '[a-z0-9-]+', 'year' => '\\d{4}']);
+     *
+     * @param string|array $key Parameter name or array of name=>regex
+     * @param string|null $pattern Regex pattern (without delimiters) when $key is string
+     * @return self
+     */
+    public function where($key, ?string $pattern = null): self
+    {
+        if (is_array($key)) {
+            foreach ($key as $param => $regex) {
+                if (is_string($param) && is_string($regex)) {
+                    $this->constraints[$param] = $regex;
+                }
+            }
+        } elseif (is_string($key) && is_string($pattern)) {
+            $this->constraints[$key] = $pattern;
+        }
+        return $this;
+    }
+
+    /**
+     * Get parameter constraints
+     *
+     * @return array<string,string>
+     */
+    public function getConstraints(): array
+    {
+        return $this->constraints;
     }
 }
 
@@ -445,22 +506,64 @@ class Router
             return true;
         }
 
-        // Pattern matching with parameters
-        $patternParts = array_filter(explode('/', trim($pattern, '/')));
-        $uriParts = array_filter(explode('/', trim($uri, '/')));
-
-        if (count($patternParts) !== count($uriParts)) {
-            return false;
-        }
+        // Pattern matching with parameters (supports optional {param?})
+        $patternParts = array_values(array_filter(explode('/', trim($pattern, '/'))));
+        $uriParts = array_values(array_filter(explode('/', trim($uri, '/'))));
 
         $parameters = [];
 
-        foreach ($patternParts as $key => $patternPart) {
-            if (preg_match('/^\{(\w+)\??\}$/', $patternPart, $matches)) {
-                // Parameter placeholder {id} or {id?}
-                $parameters[$matches[1]] = $uriParts[$key];
-            } else if ($patternPart !== $uriParts[$key]) {
-                // Literal mismatch
+        $i = 0; // index for patternParts
+        $j = 0; // index for uriParts
+        $patternCount = count($patternParts);
+        $uriCount = count($uriParts);
+
+        while ($i < $patternCount) {
+            $patternPart = $patternParts[$i];
+
+            if (preg_match('/^\{(\w+)(\?)?\}$/', $patternPart, $matches)) {
+                $paramName = $matches[1];
+                $isOptional = ($matches[2] ?? '') === '?';
+
+                if ($j < $uriCount) {
+                    $parameters[$paramName] = $uriParts[$j];
+                    $j++;
+                } else if ($isOptional) {
+                    // Optional parameter missing
+                    $parameters[$paramName] = null;
+                } else {
+                    // Required parameter missing
+                    return false;
+                }
+            } else {
+                // Literal segment must match exactly
+                if ($j >= $uriCount || $patternPart !== $uriParts[$j]) {
+                    return false;
+                }
+                $j++;
+            }
+
+            $i++;
+        }
+
+        // If there are extra URI segments beyond the pattern, no match
+        if ($j !== $uriCount) {
+            return false;
+        }
+
+        // Validate parameter constraints (if defined)
+        $constraints = $route->getConstraints();
+        foreach ($constraints as $param => $regex) {
+            // Only validate if parameter exists and not null
+            if (!array_key_exists($param, $parameters) || $parameters[$param] === null) {
+                continue;
+            }
+            $value = (string) $parameters[$param];
+            $delimiterWrapped = '#^' . $regex . '$#';
+            if (@preg_match($delimiterWrapped, '') === false) {
+                // Invalid regex - treat as non-match for safety
+                return false;
+            }
+            if (!preg_match($delimiterWrapped, $value)) {
                 return false;
             }
         }
@@ -481,28 +584,63 @@ class Router
         $action = $route->getAction();
         $parameters = $route->getParameters();
 
-        // Handle closure action
+        $destination = function (Request $request) use ($action, $parameters) {
+            return $this->executeRouteAction($action, $parameters);
+        };
+
+        $response = $this->runRouteMiddleware($route, $request, $destination);
+
+        return $this->normalizeResponse($action, $response);
+    }
+
+    /**
+     * Execute the underlying route action.
+     *
+     * @param mixed $action
+     * @param array $parameters
+     * @return mixed
+     */
+    protected function executeRouteAction($action, array $parameters)
+    {
         if ($action instanceof Closure) {
-            $response = call_user_func_array($action, array_values($parameters));
-        } else if (is_string($action)) {
-            // Handle controller@method action
-            $response = $this->callControllerAction($action, $parameters);
-        } else {
-            throw new \Exception('Invalid route action');
+            return call_user_func_array($action, array_values($parameters));
         }
 
-        // Smart response handling
-        if (!($response instanceof Response)) {
-            $response = $this->makeSmartResponse($action, $response);
+        if (is_string($action)) {
+            return $this->callControllerAction($action, $parameters);
         }
 
-        return $response;
+        throw new \Exception('Invalid route action');
+    }
+
+    /**
+     * Normalize any handler output into a Response.
+     *
+     * @param mixed $action
+     * @param mixed $response
+     * @return Response
+     */
+    protected function normalizeResponse($action, $response): Response
+    {
+        if ($response instanceof Response) {
+            return $response;
+        }
+
+        $actionName = 'middleware';
+
+        if (is_string($action)) {
+            $actionName = $action;
+        } elseif (is_object($action)) {
+            $actionName = get_class($action);
+        }
+
+        return $this->makeSmartResponse($actionName, $response);
     }
 
     /**
      * Convert controller response to proper Response object
      * 
-     * @param string $action The controller@method
+     * @param string $action The controller/closure identifier
      * @param mixed $response The controller response
      * @return Response
      */
@@ -515,8 +653,9 @@ class Router
 
         // Web Controllers: Handle view and string responses
         if (is_array($response)) {
-            // If array is returned, treat as view data
-            return new Response((string)$response, 200, ['Content-Type' => 'text/html']);
+            throw new \InvalidArgumentException(
+                'Controller returned an array. Return Response/string or use response()->json() explicitly.'
+            );
         }
 
         if (is_string($response)) {
@@ -542,15 +681,105 @@ class Router
         $controller = $this->app->make($controllerClass);
 
         // Call the method with parameters
-        $result = call_user_func_array([$controller, $method], array_values($parameters));
+        return call_user_func_array([$controller, $method], array_values($parameters));
+    }
 
-        // Auto-detect if this is an API route and response is array
-        if (is_array($result) && (strpos($action, 'Api\\') !== false || strpos($action, '\\Api\\') !== false)) {
-            $response = new Response();
-            return $response->json($result);
+    /**
+     * Execute route-specific middleware stack.
+     *
+     * @param Route $route
+     * @param Request $request
+     * @param callable $destination
+     * @return mixed
+     */
+    protected function runRouteMiddleware(Route $route, Request $request, callable $destination)
+    {
+        $middleware = $route->getMiddleware();
+
+        if (empty($middleware)) {
+            return $destination($request);
         }
 
-        return $result;
+        $pipeline = array_reduce(
+            array_reverse($middleware),
+            function ($next, $definition) {
+                return function (Request $request) use ($definition, $next) {
+                    $instance = $this->resolveRouteMiddleware($definition);
+                    return $instance->handle($request, function (Request $request) use ($next) {
+                        return $next($request);
+                    });
+                };
+            },
+            $destination
+        );
+
+        return $pipeline($request);
+    }
+
+    /**
+     * Resolve middleware definition to an executable instance.
+     *
+     * @param mixed $middleware
+     * @return MiddlewareInterface
+     */
+    protected function resolveRouteMiddleware($middleware): MiddlewareInterface
+    {
+        if ($middleware instanceof MiddlewareInterface) {
+            return $middleware;
+        }
+
+        if ($middleware instanceof Closure) {
+            return new class($middleware) implements MiddlewareInterface {
+                protected Closure $callback;
+
+                public function __construct(Closure $callback)
+                {
+                    $this->callback = $callback;
+                }
+
+                public function handle(Request $request, Closure $next)
+                {
+                    return ($this->callback)($request, $next);
+                }
+            };
+        }
+
+        if (is_string($middleware)) {
+            return $this->instantiateMiddlewareClass($middleware);
+        }
+
+        if (is_object($middleware) && method_exists($middleware, 'handle')) {
+            if ($middleware instanceof MiddlewareInterface) {
+                return $middleware;
+            }
+        }
+
+        throw new \InvalidArgumentException('Invalid middleware provided to route.');
+    }
+
+    /**
+     * Instantiate middleware using the container when available.
+     *
+     * @param string $middleware
+     * @return MiddlewareInterface
+     */
+    protected function instantiateMiddlewareClass(string $middleware): MiddlewareInterface
+    {
+        if ($this->app && $this->app->has($middleware)) {
+            $instance = $this->app->make($middleware);
+        } elseif (class_exists($middleware)) {
+            $instance = $this->app
+                ? $this->app->make($middleware)
+                : new $middleware();
+        } else {
+            throw new \InvalidArgumentException("Middleware class '{$middleware}' not found.");
+        }
+
+        if (!$instance instanceof MiddlewareInterface) {
+            throw new \InvalidArgumentException("Middleware '{$middleware}' must implement MiddlewareInterface.");
+        }
+
+        return $instance;
     }
 
     /**

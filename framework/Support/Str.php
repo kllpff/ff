@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Support;
+namespace FF\Support;
 
 /**
  * Str - String Utilities

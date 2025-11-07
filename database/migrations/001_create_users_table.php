@@ -6,7 +6,7 @@
  * Creates the users table with authentication fields.
  */
 
-use FF\Framework\Database\SchemaBuilder;
+use FF\Database\SchemaBuilder;
 
 return [
     'up' => function (SchemaBuilder $schema) {

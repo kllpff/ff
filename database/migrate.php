@@ -7,7 +7,7 @@
 
 require_once __DIR__ . '/../public/index.php';
 
-$connection = \FF\Framework\Database\Model::getConnection();
+$connection = \FF\Database\Model::getConnection();
 $migrationsPath = __DIR__ . '/migrations';
 
 if (!is_dir($migrationsPath)) {

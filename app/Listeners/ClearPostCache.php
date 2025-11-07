@@ -5,7 +5,7 @@ namespace App\Listeners;
 use App\Events\PostCreated;
 use App\Events\PostUpdated;
 use App\Events\PostDeleted;
-use FF\Framework\Cache\Cache;
+use FF\Cache\Cache;
 
 /**
  * ClearPostCache Listener

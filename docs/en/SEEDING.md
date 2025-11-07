@@ -11,7 +11,7 @@ Populate database with test data.
 require_once __DIR__ . '/../vendor/autoload.php';
 
 // Create database connection
-$connection = app(\FF\Framework\Database\Connection::class);
+$connection = app(\FF\Database\Connection::class);
 
 // Seed users
 for ($i = 1; $i <= 5; $i++) {

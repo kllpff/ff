@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Validation;
+namespace FF\Validation;
 
 /**
  * Validator - Data Validation
@@ -94,6 +94,11 @@ class Validator
 
         if (method_exists($this, $method)) {
             $value = $this->data[$field] ?? null;
+
+            if ($ruleName !== 'required' && !$this->hasValue($value)) {
+                return;
+            }
+
             if (!$this->$method($field, $value, $ruleParams)) {
                 $this->addError($field, $ruleName, $ruleParams);
             }
@@ -110,7 +115,19 @@ class Validator
      */
     protected function validateRequired(string $field, $value, array $params): bool
     {
-        return !empty($value);
+        if (is_null($value)) {
+            return false;
+        }
+
+        if (is_string($value)) {
+            return trim($value) !== '';
+        }
+
+        if (is_array($value)) {
+            return !empty($value);
+        }
+
+        return $value !== false && $value !== '';
     }
 
     /**
@@ -137,7 +154,15 @@ class Validator
     protected function validateMin(string $field, $value, array $params): bool
     {
         $min = (int)($params[0] ?? 0);
-        return strlen((string)$value) >= $min;
+        if (is_numeric($value)) {
+            return (float)$value >= $min;
+        }
+
+        if (is_countable($value)) {
+            return count($value) >= $min;
+        }
+
+        return $this->stringLength((string)$value) >= $min;
     }
 
     /**
@@ -151,7 +176,19 @@ class Validator
     protected function validateMax(string $field, $value, array $params): bool
     {
         $max = (int)($params[0] ?? 0);
-        return strlen((string)$value) <= $max;
+        // File size in KB when validating uploaded files
+        if ($value instanceof \FF\Http\UploadedFile) {
+            return $value->getSize() <= ($max * 1024);
+        }
+        if (is_numeric($value)) {
+            return (float)$value <= $max;
+        }
+
+        if (is_countable($value)) {
+            return count($value) <= $max;
+        }
+
+        return $this->stringLength((string)$value) <= $max;
     }
 
     /**
@@ -165,7 +202,27 @@ class Validator
     protected function validateRegex(string $field, $value, array $params): bool
     {
         $pattern = $params[0] ?? '';
-        return preg_match($pattern, (string)$value) === 1;
+        if ($pattern === '') {
+            return false;
+        }
+
+        $previousBacktrack = ini_get('pcre.backtrack_limit');
+        $previousRecursion = ini_get('pcre.recursion_limit');
+
+        ini_set('pcre.backtrack_limit', '1000000');
+        ini_set('pcre.recursion_limit', '1000000');
+
+        $result = @preg_match($pattern, (string)$value);
+        $error = preg_last_error();
+
+        if ($previousBacktrack !== false) {
+            ini_set('pcre.backtrack_limit', (string)$previousBacktrack);
+        }
+        if ($previousRecursion !== false) {
+            ini_set('pcre.recursion_limit', (string)$previousRecursion);
+        }
+
+        return $result === 1 && $error === PREG_NO_ERROR;
     }
 
     /**
@@ -205,6 +262,31 @@ class Validator
     protected function validateNumeric(string $field, $value, array $params): bool
     {
         return is_numeric($value);
+    }
+
+    /**
+     * Validate that value is an UploadedFile and is valid
+     */
+    protected function validateFile(string $field, $value, array $params): bool
+    {
+        if (!$value instanceof \FF\Http\UploadedFile) {
+            return false;
+        }
+        return $value->isValid();
+    }
+
+    /**
+     * Validate that uploaded file extension is allowed
+     */
+    protected function validateMimes(string $field, $value, array $params): bool
+    {
+        if (!$value instanceof \FF\Http\UploadedFile) {
+            return false;
+        }
+        $allowed = array_map(static function ($ext) {
+            return strtolower(trim((string)$ext));
+        }, $params);
+        return in_array($value->getClientExtension(), $allowed, true);
     }
 
     /**
@@ -318,6 +400,8 @@ class Validator
             'in' => "The {$field} value is not acceptable.",
             'confirmed' => "The {$field} confirmation does not match.",
             'unique' => "The {$field} has already been taken.",
+            'file' => "The {$field} must be a valid uploaded file.",
+            'mimes' => "The {$field} must be a file of type: " . implode(', ', $params) . ".",
         ];
 
         return $messages[$rule] ?? "The {$field} validation failed for rule: {$rule}";
@@ -365,5 +449,37 @@ class Validator
             return $fieldErrors[0] ?? null;
         }
         return null;
+    }
+
+    /**
+     * Determine if a value is considered present (non-empty).
+     */
+    protected function hasValue($value): bool
+    {
+        if (is_null($value)) {
+            return false;
+        }
+
+        if (is_string($value)) {
+            return trim($value) !== '';
+        }
+
+        if (is_array($value)) {
+            return !empty($value);
+        }
+
+        return true;
+    }
+
+    /**
+     * Get the length of a string using multibyte support when available.
+     */
+    protected function stringLength(string $value): int
+    {
+        if (function_exists('mb_strlen')) {
+            return mb_strlen($value, 'UTF-8');
+        }
+
+        return strlen($value);
     }
 }

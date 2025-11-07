@@ -37,7 +37,7 @@ public function index()
 <!DOCTYPE html>
 <html>
 <head>
-    <title><?php echo $title ?? 'Приложение'; ?></title>
+    <title><?php echo h($title ?? 'Приложение'); ?></title>
 </head>
 <body>
     <header>Шапка</header>

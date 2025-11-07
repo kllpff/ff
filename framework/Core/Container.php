@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Core;
+namespace FF\Core;
 
 use Closure;
 use ReflectionClass;

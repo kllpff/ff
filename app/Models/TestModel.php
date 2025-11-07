@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use FF\Framework\Database\Model;
+use FF\Database\Model;
 
 class TestModel extends Model
 {

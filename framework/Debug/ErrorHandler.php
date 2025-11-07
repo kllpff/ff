@@ -1,8 +1,8 @@
 <?php
 
-namespace FF\Framework\Debug;
+namespace FF\Debug;
 
-use FF\Framework\Log\Logger;
+use FF\Log\Logger;
 
 /**
  * ErrorHandler - Error Handler
@@ -75,6 +75,7 @@ class ErrorHandler
                 'level' => $level,
                 'file' => $file,
                 'line' => $line,
+                'request_id' => function_exists('request_id') ? request_id() : null,
             ]);
         }
 

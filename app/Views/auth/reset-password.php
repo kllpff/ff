@@ -8,6 +8,7 @@
                 <p class="text-secondary mb-6">Enter your new password below.</p>
 
                 <form method="POST" action="/reset-password">
+                    <?php echo csrf_field(); ?>
                     <input type="hidden" name="token" value="<?php echo h($token ?? ''); ?>">
 
                     <div class="form-group">

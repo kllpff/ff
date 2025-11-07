@@ -2,7 +2,7 @@
 
 namespace Database\Migrations;
 
-use FF\Framework\Database\Migration;
+use FF\Database\Migration;
 
 class CreateTestTable extends Migration
 {

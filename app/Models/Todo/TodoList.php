@@ -2,7 +2,7 @@
 
 namespace App\Models\Todo;
 
-use FF\Framework\Database\Model;
+use FF\Database\Model;
 
 /**
  * TodoList - Todo list model

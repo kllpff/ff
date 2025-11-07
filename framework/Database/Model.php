@@ -1,8 +1,8 @@
 <?php
 
-namespace FF\Framework\Database;
+namespace FF\Database;
 
-use FF\Framework\Core\Container;
+use FF\Core\Container;
 use JsonSerializable;
 
 /**
@@ -133,8 +133,7 @@ abstract class Model implements JsonSerializable
      */
     public static function find($id)
     {
-        $results = static::query()->find($id);
-        return $results ? new static($results) : null;
+        return static::query()->find($id);
     }
 
     /**

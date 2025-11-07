@@ -11,8 +11,8 @@
                 <p class="text-secondary mb-4">Controllers are stored in <code class="code-inline">app/Controllers/</code></p>
                 <pre class="code-block">namespace App\Controllers;
 
-use FF\Framework\Http\Request;
-use FF\Framework\Http\Response;
+use FF\Http\Request;
+use FF\Http\Response;
 
 class UserController
 {

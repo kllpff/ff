@@ -125,6 +125,29 @@ $validated = $request->validate([
 ]);
 ```
 
+## File Rules
+
+File fields are validated with dedicated rules:
+
+```php
+$validated = $request->validate([
+    'avatar' => 'required|file|mimes:jpg,png|max:2048',
+]);
+
+$file = $request->file('avatar');
+// Public upload (web-accessible):
+$path = $file->moveToPublicUploads('avatar_' . time() . '.jpg');
+// Or private storage:
+// $path = $file->moveToStorageUploads('avatar_' . time() . '.jpg');
+```
+
+- `file` — value must be a valid uploaded file (`UploadedFile`).
+- `mimes:...` — allowed extensions (checked against the original filename).
+- `max:N` — maximum file size in kilobytes; `max:2048` ≈ 2 MB.
+- You can additionally check the real MIME type via `$file->getMimeType()`.
+
+See the Security guide for storage path recommendations: use `public/uploads` for public files and `storage/uploads` for private ones.
+
 ## Complete Form Example
 
 ```php

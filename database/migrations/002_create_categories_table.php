@@ -6,7 +6,7 @@
  * Creates the categories table for blog posts.
  */
 
-use FF\Framework\Database\SchemaBuilder;
+use FF\Database\SchemaBuilder;
 
 return [
     'up' => function (SchemaBuilder $schema) {

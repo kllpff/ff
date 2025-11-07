@@ -1,12 +1,12 @@
 <?php
 
-namespace FF\Framework\Security;
+namespace FF\Security;
 
 /**
  * Encrypt - Encryption Service
  * 
- * Provides AES-256-CBC encryption/decryption for sensitive data.
- * Uses OpenSSL for encryption operations.
+ * Provides AEAD encryption (AES-256-GCM) for sensitive data.
+ * Uses OpenSSL for authenticated encryption operations.
  */
 class Encrypt
 {
@@ -15,7 +15,13 @@ class Encrypt
      * 
      * @var string
      */
-    protected static string $cipher = 'AES-256-CBC';
+    protected static string $cipher = 'aes-256-gcm';
+
+    /**
+     * Lengths for IV and authentication tag
+     */
+    protected const IV_LENGTH = 12;   // Recommended IV size for GCM
+    protected const TAG_LENGTH = 16;  // 128-bit authentication tag
 
     /**
      * The encryption key
@@ -37,14 +43,17 @@ class Encrypt
             throw new \Exception('No encryption key provided. Set APP_KEY environment variable.');
         }
 
-        // Ensure key is correct length (32 bytes for AES-256)
-        if (strlen($this->key) < 32) {
-            // Pad key if too short
-            $this->key = str_pad($this->key, 32, '0');
-        } else if (strlen($this->key) > 32) {
-            // Truncate key if too long
-            $this->key = substr($this->key, 0, 32);
+        // Support Laravel-style base64 prefixed keys
+        if (str_starts_with($this->key, 'base64:')) {
+            $base64Key = substr($this->key, 7);
+            $decoded = base64_decode($base64Key, true);
+            if ($decoded !== false) {
+                $this->key = $decoded;
+            }
         }
+
+        // Derive 32-byte key material (binary string) for AES-256
+        $this->key = hash('sha256', $this->key, true);
     }
 
     /**
@@ -56,24 +65,27 @@ class Encrypt
      */
     public function encrypt(string $value): string
     {
-        // Generate random IV
-        $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length(static::$cipher));
+        // Generate random IV suitable for GCM
+        $iv = random_bytes(self::IV_LENGTH);
 
-        // Encrypt the value
-        $encrypted = openssl_encrypt(
+        $tag = '';
+
+        $ciphertext = openssl_encrypt(
             $value,
             static::$cipher,
             $this->key,
-            0, // No raw output (base64 output)
-            $iv
+            OPENSSL_RAW_DATA,
+            $iv,
+            $tag,
+            ''
         );
 
-        if ($encrypted === false) {
+        if ($ciphertext === false || $tag === false || strlen($tag) !== self::TAG_LENGTH) {
             throw new \Exception('Encryption failed');
         }
 
-        // Return IV + encrypted value (both base64 encoded)
-        return base64_encode($iv . $encrypted);
+        // Encode IV + tag + ciphertext
+        return base64_encode($iv . $tag . $ciphertext);
     }
 
     /**
@@ -86,26 +98,31 @@ class Encrypt
     public function decrypt(string $encryptedValue): string
     {
         // Decode from base64
-        $data = base64_decode($encryptedValue);
+        $data = base64_decode($encryptedValue, true);
 
         if ($data === false) {
             throw new \Exception('Invalid encrypted value');
         }
 
-        // Get IV length
-        $ivLength = openssl_cipher_iv_length(static::$cipher);
+        $expectedMinLength = self::IV_LENGTH + self::TAG_LENGTH;
+        if (strlen($data) <= $expectedMinLength) {
+            throw new \Exception('Invalid encrypted payload');
+        }
 
         // Extract IV and encrypted payload
-        $iv = substr($data, 0, $ivLength);
-        $encrypted = substr($data, $ivLength);
+        $iv = substr($data, 0, self::IV_LENGTH);
+        $tag = substr($data, self::IV_LENGTH, self::TAG_LENGTH);
+        $ciphertext = substr($data, $expectedMinLength);
 
         // Decrypt
         $decrypted = openssl_decrypt(
-            $encrypted,
+            $ciphertext,
             static::$cipher,
             $this->key,
-            0, // No raw output (expects base64)
-            $iv
+            OPENSSL_RAW_DATA,
+            $iv,
+            $tag,
+            ''
         );
 
         if ($decrypted === false) {
@@ -148,6 +165,6 @@ class Encrypt
      */
     public static function generateKey(): string
     {
-        return bin2hex(openssl_random_pseudo_bytes(16)); // 32 hex chars = 16 bytes
+        return bin2hex(random_bytes(32));
     }
 }

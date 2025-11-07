@@ -125,6 +125,29 @@ $validated = $request->validate([
 ]);
 ```
 
+## Правила для файлов
+
+Файловые поля валидируются специальными правилами:
+
+```php
+$validated = $request->validate([
+    'avatar' => 'required|file|mimes:jpg,png|max:2048',
+]);
+
+$file = $request->file('avatar');
+// Публичная загрузка (доступно из веба):
+$path = $file->moveToPublicUploads('avatar_' . time() . '.jpg');
+// Либо приватное хранилище:
+// $path = $file->moveToStorageUploads('avatar_' . time() . '.jpg');
+```
+
+- `file` — значение должно быть корректным загруженным файлом (`UploadedFile`).
+- `mimes:...` — разрешённые расширения (проверяется по исходному имени файла).
+- `max:N` — максимальный размер файла в килобайтах; `max:2048` ≈ 2 МБ.
+- Дополнительную проверку реального MIME-типa можно сделать через `$file->getMimeType()`.
+
+См. раздел безопасности для рекомендаций по путям хранения: `public/uploads` для публичных файлов и `storage/uploads` для приватных.
+
 ## Полный пример формы
 
 ```php

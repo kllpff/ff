@@ -1,6 +1,7 @@
 {
   "name": "ff/framework",
   "description": "FF - Fast, secure, and flexible PHP MVC framework",
+  "version": "1.1.0",
   "type": "library",
   "license": "MIT",
   "authors": [
@@ -10,14 +11,11 @@
     }
   ],
   "require": {
-    "php": ">=8.1",
-    "vlucas/phpdotenv": "^5.0",
-    "symfony/mailer": "^6.0",
-    "symfony/mime": "^6.0"
+    "php": ">=8.1"
   },
   "autoload": {
     "psr-4": {
-      "FF\\Framework\\": "framework/",
+      "FF\\": "framework/",
       "App\\": "app/"
     },
     "files": [
@@ -25,8 +23,7 @@
     ]
   },
   "scripts": {
-    "test": "phpunit",
-    "serve": "php -S localhost:8000 -t public"
+    "serve": "php -S localhost:9847 -t public"
   },
   "minimum-stability": "stable"
 }

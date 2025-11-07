@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Debug;
+namespace FF\Debug;
 
 use Throwable;
 

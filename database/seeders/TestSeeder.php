@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use FF\Framework\Database\Seeder;
+use FF\Database\Seeder;
 
 class TestSeeder extends Seeder
 {

@@ -76,14 +76,14 @@ php artisan migrate --verbose
 
 ## Создание пользовательских команд
 
-Вы можете создавать пользовательские команды Artisan, расширяя класс `FF\Framework\Console\Command`:
+Вы можете создавать пользовательские команды Artisan, расширяя класс `FF\Console\Command`:
 
 ```php
 <?php
 
 namespace App\Console\Commands;
 
-use FF\Framework\Console\Command;
+use FF\Console\Command;
 
 class CustomCommand extends Command
 {

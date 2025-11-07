@@ -1,9 +1,9 @@
 <?php
 
-namespace FF\Framework\Http\Controllers;
+namespace FF\Http\Controllers;
 
-use FF\Framework\Core\Container;
-use FF\Framework\Http\Request;
+use FF\Core\Container;
+use FF\Http\Request;
 
 /**
  * Controller - Base Controller Class

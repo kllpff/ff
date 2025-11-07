@@ -7,7 +7,7 @@
 Маршруты определяются в `config/routes.php`:
 
 ```php
-$router = app(\FF\Framework\Http\Router::class);
+$router = app(\FF\Http\Router::class);
 
 // GET запрос
 $router->get('/users', 'UserController@index');
@@ -57,7 +57,19 @@ $router->get('/users/{id}', 'UserController@show')
 
 $router->get('/posts/{slug}', 'PostController@show')
     ->where('slug', '[a-z0-9-]+');
+ 
+ // Несколько ограничений
+ $router->get('/reports/{year}/{format}', 'ReportController@show')
+     ->where([
+         'year' => '\\d{4}',
+         'format' => '(json|csv)'
+     ]);
 ```
+
+ Примечания:
+ - Если значение не соответствует regex, маршрут не совпадает (404).
+ - Паттерны автоматически анкерятся (`^...$`), разделители не нужны.
+ - Опциональные параметры (`{param?}`) поддерживаются; ограничения применяются только когда значение присутствует.
 
 ## Именованные маршруты
 
@@ -164,8 +176,8 @@ route('posts.index', [], ['page' => 2]);    // /posts?page=2
 ### Текущий URL
 
 ```php
-request()->url();          // /users/1
-request()->fullUrl();      // /users/1?sort=date
+request()->url();          // http://localhost/users/1
+request()->fullUrl();      // http://localhost/users/1?sort=date
 request()->path();         // users/1
 ```
 

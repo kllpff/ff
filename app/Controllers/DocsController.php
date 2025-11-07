@@ -2,20 +2,54 @@
 
 namespace App\Controllers;
 
-use FF\Framework\Http\Request;
-use FF\Framework\Http\Response;
+use FF\Http\Response;
 
 /**
  * DocsController
- * 
- * Handles documentation pages.
+ *
+ * Serves documentation pages using standard view rendering.
+ * Templates render exactly as authored; variable output remains auto-escaped
+ * by the view engine unless explicitly marked with raw_html().
  */
 class DocsController
 {
     /**
-     * Available documentation sections
-     * 
-     * @var array
+     * Tags and attributes permitted within documentation responses.
+     *
+     * @var array<int,string>
+     */
+    private const DOCS_ALLOWED_TAGS = [
+        'a', 'abbr', 'article', 'aside', 'b', 'blockquote', 'body', 'br',
+        'caption', 'code', 'del', 'div', 'em', 'figcaption', 'figure',
+        'footer', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header',
+        'hr', 'html', 'i', 'img', 'ins', 'li', 'link', 'main', 'mark',
+        'meta', 'nav', 'ol', 'p', 'pre', 'section', 'small', 'span', 'strong',
+        'sub', 'sup', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'title',
+        'tr', 'ul'
+    ];
+
+    /**
+     * @var array<string,array<int,string>>
+     */
+    private const DOCS_ALLOWED_ATTRIBUTES = [
+        '*' => ['class'],
+        'a' => ['href', 'title', 'rel', 'target'],
+        'abbr' => ['title'],
+        'caption' => ['align'],
+        'html' => ['lang'],
+        'img' => ['src', 'alt', 'title', 'width', 'height'],
+        'link' => ['rel', 'href'],
+        'meta' => ['charset', 'name', 'content', 'http-equiv'],
+        'ol' => ['start'],
+        'table' => ['summary'],
+        'td' => ['colspan', 'rowspan'],
+        'th' => ['scope', 'colspan', 'rowspan'],
+    ];
+
+    /**
+     * Available documentation sections.
+     *
+     * @var array<int,string>
      */
     protected array $sections = [
         'installation',
@@ -32,43 +66,43 @@ class DocsController
         'security',
         'views',
         'helpers',
-        'deployment'
+        'deployment',
     ];
 
     /**
-     * Show documentation index
-     * 
-     * @return Response
+     * Show documentation index.
      */
     public function index(): Response
     {
-        $content = view('docs/index', [
+        return $this->renderDocsView('docs/index', [
             'title' => 'Documentation - FF Framework',
-            'sections' => $this->sections
+            'sections' => $this->sections,
         ]);
-        
-        return response($content);
     }
 
     /**
-     * Show specific documentation section
-     * 
-     * @param string $section The section name
-     * @return Response
+     * Show specific documentation section.
      */
     public function show(string $section): Response
     {
-        if (!in_array($section, $this->sections)) {
+        if (!in_array($section, $this->sections, true)) {
             session()->flash('error', 'Documentation section not found');
             return redirect('/docs');
         }
 
-        $content = view('docs/' . $section, [
+        return $this->renderDocsView('docs/' . $section, [
             'title' => ucfirst($section) . ' - Documentation - FF Framework',
             'section' => $section,
-            'sections' => $this->sections
+            'sections' => $this->sections,
         ]);
-        
+    }
+
+    /**
+     * Render a documentation view.
+     */
+    protected function renderDocsView(string $view, array $data): Response
+    {
+        $content = view($view, $data);
         return response($content);
     }
 }

@@ -77,13 +77,15 @@
         <div class="comments">
             <h3>💬 Comments (<?php echo count($comments); ?>)</h3>
 
-            <?php if(session('success')): ?>
-                <div class="success">✅ <?php echo session('success'); ?></div>
+            <?php $commentFlash = session()->getFlash('success'); ?>
+            <?php if ($commentFlash !== null): ?>
+                <div class="success">✅ <?php echo h($commentFlash); ?></div>
             <?php endif; ?>
 
             <div class="comment-form">
                 <h4 style="margin-bottom: 15px;">Leave a Comment</h4>
                 <form method="POST" action="/blog/<?php echo $post->category_id; ?>/post/<?php echo $post->id; ?>/comment">
+                    <?php echo csrf_field(); ?>
                     <div class="form-group">
                         <label for="author_name">Your Name</label>
                         <input type="text" id="author_name" name="author_name" required placeholder="John Doe" maxlength="255">

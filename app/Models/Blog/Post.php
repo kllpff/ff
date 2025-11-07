@@ -2,7 +2,7 @@
 
 namespace App\Models\Blog;
 
-use FF\Framework\Database\Model;
+use FF\Database\Model;
 
 /**
  * Post - Blog post model

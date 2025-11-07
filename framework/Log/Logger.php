@@ -1,20 +1,17 @@
 <?php
 
-namespace FF\Framework\Log;
+namespace FF\Log;
 
 use DateTime;
 
 /**
  * Logger - Application Logger
- * 
- * Logs messages at different levels (debug, info, notice, warning, error, critical, alert, emergency).
- * Supports file-based logging with configurable verbosity.
+ *
+ * Provides simple file-based logging with log-level filtering and
+ * protections against log injection and directory traversal attacks.
  */
 class Logger
 {
-    /**
-     * Log levels
-     */
     public const DEBUG = 0;
     public const INFO = 1;
     public const NOTICE = 2;
@@ -24,11 +21,6 @@ class Logger
     public const ALERT = 6;
     public const EMERGENCY = 7;
 
-    /**
-     * Level names
-     * 
-     * @var array
-     */
     protected static array $levels = [
         self::DEBUG => 'DEBUG',
         self::INFO => 'INFO',
@@ -40,145 +32,66 @@ class Logger
         self::EMERGENCY => 'EMERGENCY',
     ];
 
-    /**
-     * The log file path
-     * 
-     * @var string
-     */
     protected string $logFile;
-
-    /**
-     * Minimum log level to record
-     * 
-     * @var int
-     */
     protected int $minLevel;
+    protected string $baseDirectory;
 
     /**
-     * Create a new Logger instance
-     * 
-     * @param string $logFile The log file path
-     * @param int $minLevel Minimum level to log
+     * @param string $logFile    Desired log file (relative to base logs directory).
+     * @param int    $minLevel   Minimum severity level to record.
+     * @param string|null $baseDirectory Optional base directory for logs.
      */
-    public function __construct(string $logFile, int $minLevel = self::DEBUG)
+    public function __construct(string $logFile, int $minLevel = self::DEBUG, ?string $baseDirectory = null)
     {
-        $this->logFile = $logFile;
+        $this->baseDirectory = $baseDirectory ?: $this->defaultBaseDirectory();
+        $this->logFile = $this->resolveLogPath($logFile);
         $this->minLevel = $minLevel;
 
-        // Create log directory if it doesn't exist
-        $dir = dirname($logFile);
-        if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
-        }
+        $this->ensureDirectory(dirname($this->logFile));
     }
 
-    /**
-     * Log a debug message
-     * 
-     * @param string $message The message
-     * @param array $context Context data
-     * @return void
-     */
     public function debug(string $message, array $context = []): void
     {
         $this->log(self::DEBUG, $message, $context);
     }
 
-    /**
-     * Log an info message
-     * 
-     * @param string $message The message
-     * @param array $context Context data
-     * @return void
-     */
     public function info(string $message, array $context = []): void
     {
         $this->log(self::INFO, $message, $context);
     }
 
-    /**
-     * Log a notice message
-     * 
-     * @param string $message The message
-     * @param array $context Context data
-     * @return void
-     */
     public function notice(string $message, array $context = []): void
     {
         $this->log(self::NOTICE, $message, $context);
     }
 
-    /**
-     * Log a warning message
-     * 
-     * @param string $message The message
-     * @param array $context Context data
-     * @return void
-     */
     public function warning(string $message, array $context = []): void
     {
         $this->log(self::WARNING, $message, $context);
     }
 
-    /**
-     * Log an error message
-     * 
-     * @param string $message The message
-     * @param array $context Context data
-     * @return void
-     */
     public function error(string $message, array $context = []): void
     {
         $this->log(self::ERROR, $message, $context);
     }
 
-    /**
-     * Log a critical message
-     * 
-     * @param string $message The message
-     * @param array $context Context data
-     * @return void
-     */
     public function critical(string $message, array $context = []): void
     {
         $this->log(self::CRITICAL, $message, $context);
     }
 
-    /**
-     * Log an alert message
-     * 
-     * @param string $message The message
-     * @param array $context Context data
-     * @return void
-     */
     public function alert(string $message, array $context = []): void
     {
         $this->log(self::ALERT, $message, $context);
     }
 
-    /**
-     * Log an emergency message
-     * 
-     * @param string $message The message
-     * @param array $context Context data
-     * @return void
-     */
     public function emergency(string $message, array $context = []): void
     {
         $this->log(self::EMERGENCY, $message, $context);
     }
 
-    /**
-     * Log a message at the specified level
-     * 
-     * @param int $level The log level
-     * @param string $message The message
-     * @param array $context Context data
-     * @return void
-     */
     public function log(int $level, string $message, array $context = []): void
     {
-        // Check if level meets minimum threshold
         if ($level < $this->minLevel) {
             return;
         }
@@ -186,57 +99,39 @@ class Logger
         $levelName = self::$levels[$level] ?? 'UNKNOWN';
         $timestamp = (new DateTime())->format('Y-m-d H:i:s');
 
-        // Format log entry
+        $message = $this->sanitizeMessage($message);
+        $context = $this->sanitizeContext($context);
+
         $logEntry = "[$timestamp] $levelName: $message";
 
         if (!empty($context)) {
-            $logEntry .= " " . json_encode($context);
+            $encoded = json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            if ($encoded !== false) {
+                $logEntry .= ' ' . $encoded;
+            }
         }
 
-        $logEntry .= "\n";
+        $logEntry .= PHP_EOL;
 
-        // Write to log file
         file_put_contents($this->logFile, $logEntry, FILE_APPEND | LOCK_EX);
     }
 
-    /**
-     * Get the current log file
-     * 
-     * @return string
-     */
     public function getLogFile(): string
     {
         return $this->logFile;
     }
 
-    /**
-     * Set the minimum log level
-     * 
-     * @param int $level The minimum level
-     * @return self
-     */
     public function setMinLevel(int $level): self
     {
         $this->minLevel = $level;
         return $this;
     }
 
-    /**
-     * Clear the log file
-     * 
-     * @return void
-     */
     public function clear(): void
     {
         file_put_contents($this->logFile, '');
     }
 
-    /**
-     * Get recent log entries
-     * 
-     * @param int $lines Number of lines to retrieve
-     * @return array
-     */
     public function tail(int $lines = 20): array
     {
         if (!file_exists($this->logFile)) {
@@ -244,29 +139,184 @@ class Logger
         }
 
         $handle = fopen($this->logFile, 'r');
+        if (!$handle) {
+            return [];
+        }
+
         $entries = [];
         $buffer = '';
 
         fseek($handle, 0, SEEK_END);
-        $size = ftell($handle);
-        $position = $size;
+        $position = ftell($handle);
 
-        while ($position >= 0 && count($entries) < $lines) {
-            $chunkSize = min(1024, $position);
-            $position -= $chunkSize;
-
+        while ($position > 0 && count($entries) < $lines) {
+            $chunk = min(1024, $position);
+            $position -= $chunk;
             fseek($handle, $position);
-            $buffer = fread($handle, $chunkSize) . $buffer;
+            $buffer = fread($handle, $chunk) . $buffer;
+            $parts = explode(PHP_EOL, $buffer);
 
-            $lines_found = explode("\n", $buffer);
-            if (count($lines_found) > $lines) {
-                $entries = array_slice($lines_found, -$lines);
+            if (count($parts) > $lines) {
+                $entries = array_slice($parts, -$lines);
                 break;
             }
         }
 
         fclose($handle);
 
-        return array_filter(array_reverse($entries), fn($l) => !empty($l));
+        if (empty($entries)) {
+            $entries = array_filter(explode(PHP_EOL, $buffer));
+        }
+
+        return array_values(array_filter(array_reverse($entries), fn ($line) => $line !== ''));
+    }
+
+    protected function defaultBaseDirectory(): string
+    {
+        if (defined('BASE_PATH')) {
+            return rtrim(BASE_PATH, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'logs';
+        }
+
+        return sys_get_temp_dir();
+    }
+
+    protected function resolveLogPath(string $logFile): string
+    {
+        $logFile = trim($logFile);
+        if ($logFile === '') {
+            $logFile = 'app.log';
+        }
+
+        if ($this->isAbsolutePath($logFile)) {
+            $normalized = $this->normalizePath($logFile);
+        } else {
+            $relative = $this->normalizeRelativePath($logFile);
+            $normalized = $this->normalizePath($this->baseDirectory . DIRECTORY_SEPARATOR . $relative);
+        }
+
+        if (!$this->pathWithinBase($normalized)) {
+            throw new \InvalidArgumentException('Log file must reside within the logs directory.');
+        }
+
+        return $normalized;
+    }
+
+    protected function ensureDirectory(string $directory): void
+    {
+        if (!is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
+
+        if (!$this->pathWithinBase($directory)) {
+            throw new \InvalidArgumentException('Log directory must reside within the logs directory.');
+        }
+    }
+
+    protected function sanitizeMessage(string $message): string
+    {
+        $message = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/', ' ', $message);
+        $message = str_replace(["\r", "\n"], ' ', $message);
+
+        return trim($message);
+    }
+
+    protected function sanitizeContext(array $context): array
+    {
+        $sanitized = [];
+
+        foreach ($context as $key => $value) {
+            if (is_array($value)) {
+                $sanitized[$key] = $this->sanitizeContext($value);
+                continue;
+            }
+
+            if ($value instanceof \JsonSerializable) {
+                $sanitized[$key] = $this->sanitizeContext((array)$value->jsonSerialize());
+                continue;
+            }
+
+            if ($value instanceof \Stringable) {
+                $sanitized[$key] = $this->sanitizeMessage((string)$value);
+                continue;
+            }
+
+            if ($value === null || is_scalar($value)) {
+                $sanitized[$key] = is_string($value) ? $this->sanitizeMessage($value) : $value;
+                continue;
+            }
+
+            if (is_object($value) && method_exists($value, '__toString')) {
+                $sanitized[$key] = $this->sanitizeMessage((string)$value);
+                continue;
+            }
+
+            $encoded = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $sanitized[$key] = $this->sanitizeMessage($encoded !== false ? $encoded : gettype($value));
+        }
+
+        return $sanitized;
+    }
+
+    protected function normalizePath(string $path): string
+    {
+        $path = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
+        $segments = [];
+        $prefix = '';
+
+        if (preg_match('/^[A-Za-z]:/', $path)) {
+            $prefix = strtoupper(substr($path, 0, 2));
+            $path = substr($path, 2);
+        }
+
+        if (str_starts_with($path, DIRECTORY_SEPARATOR)) {
+            $prefix .= DIRECTORY_SEPARATOR;
+        }
+
+        foreach (explode(DIRECTORY_SEPARATOR, $path) as $segment) {
+            if ($segment === '' || $segment === '.') {
+                continue;
+            }
+
+            if ($segment === '..') {
+                array_pop($segments);
+                continue;
+            }
+
+            if (preg_match('/[\x00]/', $segment)) {
+                continue;
+            }
+
+            $segments[] = $segment;
+        }
+
+        $normalized = $prefix . implode(DIRECTORY_SEPARATOR, $segments);
+        return $normalized !== '' ? $normalized : ($prefix !== '' ? $prefix : '.');
+    }
+
+    protected function normalizeRelativePath(string $path): string
+    {
+        $normalized = $this->normalizePath($path);
+        $normalized = ltrim($normalized, DIRECTORY_SEPARATOR);
+        return $normalized !== '' ? $normalized : 'app.log';
+    }
+
+    protected function pathWithinBase(string $path): bool
+    {
+        $base = $this->normalizePath($this->baseDirectory);
+        $normalized = $this->normalizePath($path);
+
+        $baseCanonical = str_replace('\\', '/', strtolower(rtrim($base, DIRECTORY_SEPARATOR)));
+        $pathCanonical = str_replace('\\', '/', strtolower($normalized));
+
+        return str_starts_with($pathCanonical, $baseCanonical);
+    }
+
+    protected function isAbsolutePath(string $path): bool
+    {
+        if (str_starts_with($path, DIRECTORY_SEPARATOR)) {
+            return true;
+        }
+
+        return (bool)preg_match('/^[A-Za-z]:[\\\\\\/]/', $path);
     }
 }

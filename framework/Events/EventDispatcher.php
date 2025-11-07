@@ -1,151 +1,140 @@
 <?php
 
-namespace FF\Framework\Events;
-
-use Closure;
+namespace FF\Events;
 
 /**
  * EventDispatcher - Event Management System
- * 
- * Manages event registration and dispatch.
- * Allows listeners to subscribe to events and react to them.
  */
 class EventDispatcher
 {
     /**
-     * Registered event listeners
-     * 
-     * @var array
+     * @var array<string,array<int,array{callback:callable,once:bool}>>
      */
     protected array $listeners = [];
 
     /**
-     * Register an event listener
-     * 
-     * @param string $event The event name
-     * @param callable $listener The listener callback
-     * @return void
+     * Register a listener for the given event name/class.
      */
-    public function listen(string $event, callable $listener): void
+    public function listen(string $event, callable $listener, bool $once = false): void
     {
-        if (!isset($this->listeners[$event])) {
-            $this->listeners[$event] = [];
-        }
+        $event = $this->normalizeEventName($event);
 
-        $this->listeners[$event][] = $listener;
+        $this->listeners[$event][] = [
+            'callback' => $listener,
+            'once' => $once,
+        ];
     }
 
-    /**
-     * Register a one-time event listener
-     * 
-     * @param string $event The event name
-     * @param callable $listener The listener callback
-     * @return void
-     */
     public function once(string $event, callable $listener): void
     {
-        $onceListener = function (...$args) use ($listener, $event) {
-            $listener(...$args);
-            $this->forget($event, $listener);
-        };
-
-        $this->listen($event, $onceListener);
+        $this->listen($event, $listener, true);
     }
 
     /**
-     * Dispatch an event to all listeners
-     * 
-     * @param string $event The event name
-     * @param mixed ...$args Arguments to pass to listeners
-     * @return array Results from all listeners
+     * Dispatch an event instance or name.
+     *
+     * @param string|object $event
      */
-    public function dispatch(string $event, ...$args): array
+    public function dispatch($event, ...$payload): array
     {
+        [$eventName, $payload] = $this->prepareEventPayload($event, $payload);
         $results = [];
 
-        if (!isset($this->listeners[$event])) {
+        if (empty($this->listeners[$eventName])) {
             return $results;
         }
 
-        foreach ($this->listeners[$event] as $listener) {
-            $result = call_user_func_array($listener, $args);
-            $results[] = $result;
+        foreach ($this->listeners[$eventName] as $index => $listener) {
+            $callback = $listener['callback'];
+            $results[] = $callback(...$payload);
+
+            if ($listener['once']) {
+                unset($this->listeners[$eventName][$index]);
+            }
+        }
+
+        if (empty($this->listeners[$eventName])) {
+            unset($this->listeners[$eventName]);
+        } else {
+            $this->listeners[$eventName] = array_values($this->listeners[$eventName]);
         }
 
         return $results;
     }
 
-    /**
-     * Get all listeners for an event
-     * 
-     * @param string $event The event name
-     * @return array The listeners
-     */
+    public function emit($event, ...$payload): array
+    {
+        return $this->dispatch($event, ...$payload);
+    }
+
     public function getListeners(string $event): array
     {
+        $event = $this->normalizeEventName($event);
         return $this->listeners[$event] ?? [];
     }
 
-    /**
-     * Check if event has listeners
-     * 
-     * @param string $event The event name
-     * @return bool
-     */
     public function hasListeners(string $event): bool
     {
-        return isset($this->listeners[$event]) && !empty($this->listeners[$event]);
+        $event = $this->normalizeEventName($event);
+        return !empty($this->listeners[$event]);
     }
 
-    /**
-     * Remove a listener from an event
-     * 
-     * @param string $event The event name
-     * @param callable $listener The listener to remove
-     * @return void
-     */
     public function forget(string $event, callable $listener): void
     {
-        if (!isset($this->listeners[$event])) {
+        $event = $this->normalizeEventName($event);
+
+        if (empty($this->listeners[$event])) {
             return;
         }
 
-        $this->listeners[$event] = array_filter(
+        $this->listeners[$event] = array_values(array_filter(
             $this->listeners[$event],
-            fn($l) => $l !== $listener
-        );
+            fn ($entry) => ($entry['callback'] ?? null) !== $listener
+        ));
+
+        if (empty($this->listeners[$event])) {
+            unset($this->listeners[$event]);
+        }
     }
 
-    /**
-     * Remove all listeners for an event
-     * 
-     * @param string $event The event name
-     * @return void
-     */
     public function forgetAll(string $event): void
     {
-        unset($this->listeners[$event]);
+        unset($this->listeners[$this->normalizeEventName($event)]);
     }
 
-    /**
-     * Clear all listeners
-     * 
-     * @return void
-     */
     public function flush(): void
     {
         $this->listeners = [];
     }
 
-    /**
-     * Alias for dispatch
-     * 
-     * @param string $event The event name
-     * @param mixed ...$args Arguments
-     * @return array
-     */
-    public function emit(string $event, ...$args): array
+    protected function normalizeEventName(string $event): string
     {
-        return $this->dispatch($event, ...$args);
+        return strtolower(trim($event));
+    }
+
+    /**
+     * Prepare normalized event name and payload list.
+     *
+     * @param string|object $event
+     * @param array $payload
+     * @return array{0:string,1:array}
+     */
+    protected function prepareEventPayload($event, array $payload): array
+    {
+        if ($event instanceof Event) {
+            $payload = array_merge([$event], $payload);
+            return [$this->normalizeEventName($event->getName()), $payload];
+        }
+
+        if (is_object($event)) {
+            $payload = array_merge([$event], $payload);
+            return [$this->normalizeEventName(get_class($event)), $payload];
+        }
+
+        if (!is_string($event) || trim($event) === '') {
+            throw new \InvalidArgumentException('Event name must be a non-empty string or an event object.');
+        }
+
+        return [$this->normalizeEventName($event), $payload];
     }
 }

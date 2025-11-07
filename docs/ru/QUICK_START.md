@@ -6,7 +6,7 @@
 
 ```php
 // config/routes.php
-$router = app(\FF\Framework\Http\Router::class);
+$router = app(\FF\Http\Router::class);
 
 $router->get('/hello/{name}', 'HelloController@greet')->name('hello');
 ```
@@ -19,7 +19,7 @@ $router->get('/hello/{name}', 'HelloController@greet')->name('hello');
 
 namespace App\Controllers;
 
-use FF\Framework\Http\Request;
+use FF\Http\Request;
 
 class HelloController
 {
@@ -60,7 +60,7 @@ class HelloController
 
 namespace App\Models;
 
-use FF\Framework\Database\Model;
+use FF\Database\Model;
 
 class Post extends Model
 {
@@ -107,28 +107,28 @@ $post->delete();
 
 ### 1. Создание формы
 
-```html
+```php
 <!-- app/Views/posts/create.php -->
 <?php $__layout = 'app'; ?>
 
 <form method="POST" action="/posts">
-    {{ csrf_field() }}
-    
+    <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+
     <div>
         <label>Заголовок</label>
-        <input 
-            type="text" 
-            name="title" 
-            value="{{ old('title') }}"
+        <input
+            type="text"
+            name="title"
+            value="<?= h($title ?? '') ?>"
             required
         />
     </div>
-    
+
     <div>
         <label>Содержание</label>
-        <textarea name="content" required></textarea>
+        <textarea name="content" required><?= h($content ?? '') ?></textarea>
     </div>
-    
+
     <button type="submit">Создать</button>
 </form>
 ```
@@ -195,8 +195,8 @@ session()->flash('success', 'Операция выполнена успешно!
 session()->flash('error', 'Что-то пошло не так');
 
 // В представлении
-<?php if (session()->has('success')): ?>
-    <div class="alert">{{ session('success') }}</div>
+<?php if (session()->getFlash('success')): ?>
+    <div class="alert"><?= h(session()->getFlash('success')) ?></div>
 <?php endif; ?>
 ```
 

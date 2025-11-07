@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Assets;
+namespace FF\Assets;
 
 /**
  * AssetManager - Asset Management

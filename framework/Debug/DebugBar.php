@@ -1,8 +1,8 @@
 <?php
 
-namespace FF\Framework\Debug;
+namespace FF\Debug;
 
-use FF\Framework\Log\Logger;
+use FF\Log\Logger;
 
 /**
  * DebugBar - Debug Toolbar

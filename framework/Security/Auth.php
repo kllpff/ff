@@ -1,8 +1,8 @@
 <?php
 
-namespace FF\Framework\Security;
+namespace FF\Security;
 
-use FF\Framework\Database\Model;
+use FF\Database\Model;
 
 /**
  * Auth - Authentication Service
@@ -67,8 +67,10 @@ class Auth
      */
     public function login(Model $user): void
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        $this->ensureSessionStarted();
+
+        if (!session_regenerate_id(true)) {
+            throw new \RuntimeException('Failed to regenerate session ID during login.');
         }
 
         $this->user = $user;
@@ -122,12 +124,15 @@ class Auth
      */
     public function logout(): void
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        $this->ensureSessionStarted();
 
         $this->user = null;
         unset($_SESSION[self::SESSION_KEY]);
+
+        // Regenerate the session identifier to prevent fixation after logout
+        if (!session_regenerate_id(true)) {
+            throw new \RuntimeException('Failed to regenerate session ID during logout.');
+        }
     }
 
     /**
@@ -137,9 +142,7 @@ class Auth
      */
     protected function loadUserFromSession(): void
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        $this->ensureSessionStarted();
 
         if (isset($_SESSION[self::SESSION_KEY])) {
             $userId = $_SESSION[self::SESSION_KEY];
@@ -201,5 +204,17 @@ class Auth
         // This will be fully implemented in Stage 5.5
         // For now, provide stub
         return null;
+    }
+
+    /**
+     * Start the PHP session if it has not been started already.
+     *
+     * @return void
+     */
+    protected function ensureSessionStarted(): void
+    {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
     }
 }

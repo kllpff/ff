@@ -2,8 +2,8 @@
 
 namespace App\Controllers;
 
-use FF\Framework\Http\Request;
-use FF\Framework\Http\Response;
+use FF\Http\Request;
+use FF\Http\Response;
 
 class TestController
 {

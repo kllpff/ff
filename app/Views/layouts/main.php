@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $title ?? 'FF Framework - Modern PHP MVC'; ?></title>
+    <title><?= h($title ?? 'FF Framework - Modern PHP MVC'); ?></title>
     <link rel="stylesheet" href="/assets/css/design-system.css">
 </head>
 <body>
@@ -30,34 +30,38 @@
     </header>
 
     <!-- Flash Messages -->
-    <?php if (session('success')): ?>
+    <?php $flashSuccess = session()->getFlash('success'); ?>
+    <?php if ($flashSuccess !== null): ?>
         <div class="container mt-4">
             <div class="alert alert-success">
-                ✅ <?php echo h(session('success')); ?>
+                ✅ <?php echo h($flashSuccess); ?>
             </div>
         </div>
     <?php endif; ?>
 
-    <?php if (session('error')): ?>
+    <?php $flashError = session()->getFlash('error'); ?>
+    <?php if ($flashError !== null): ?>
         <div class="container mt-4">
             <div class="alert alert-error">
-                ❌ <?php echo h(session('error')); ?>
+                ❌ <?php echo h($flashError); ?>
             </div>
         </div>
     <?php endif; ?>
 
-    <?php if (session('warning')): ?>
+    <?php $flashWarning = session()->getFlash('warning'); ?>
+    <?php if ($flashWarning !== null): ?>
         <div class="container mt-4">
             <div class="alert alert-warning">
-                ⚠️ <?php echo h(session('warning')); ?>
+                ⚠️ <?php echo h($flashWarning); ?>
             </div>
         </div>
     <?php endif; ?>
 
-    <?php if (session('info')): ?>
+    <?php $flashInfo = session()->getFlash('info'); ?>
+    <?php if ($flashInfo !== null): ?>
         <div class="container mt-4">
             <div class="alert alert-info">
-                ℹ️ <?php echo h(session('info')); ?>
+                ℹ️ <?php echo h($flashInfo); ?>
             </div>
         </div>
     <?php endif; ?>

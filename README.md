@@ -14,7 +14,7 @@ Built with production-ready features including:
 - 🎯 **Clean Architecture** - MVC pattern with Web/API separation
 - 💪 **Powerful ORM** - Active Record pattern with QueryBuilder
 - ⚡ **Modern PHP 8.1+** - Constructor promotion, typed properties, named arguments
-- 📦 **Zero Dependencies** - Only vlucas/phpdotenv required
+- 📦 **Zero Dependencies** - Pure PHP, no external libraries required
 - 🧪 **100% Testable** - Full test coverage with example tests
 - 📚 **Comprehensive Documentation** - API guides, routing, database, security
 
@@ -513,8 +513,21 @@ $request->validate([
 ]);
 
 // Data encryption
-$encrypted = encrypt('secret');
-$decrypted = decrypt($encrypted);
+$encryptor = app('encrypt');
+$encrypted = $encryptor->encrypt('secret');
+$decrypted = $encryptor->decrypt($encrypted);
+```
+
+Best Practices:
+
+- Escape page titles in layouts: `<?php echo h($title ?? 'App'); ?>` inside `<title>`.
+- Sanitize user-generated HTML (whitelist tags/attributes) and render via `raw_html($clean)` only after proper sanitization.
+
+```php
+// Example: sanitize and render trusted HTML
+$raw = $request->input('content');
+$clean = Sanitizer::cleanHtml($raw); // or use HTML Purifier
+echo raw_html($clean);
 ```
 
 ### 5. Session Management
@@ -771,10 +784,10 @@ $dispatcher->dispatch(new PostCreated($postId, $title));
 
 **Example Code:**
 ```php
-$cache = new Cache();
+$cache = cache();
 
 // Store for 1 hour
-$cache->set('posts', $posts, 3600);
+$cache->put('posts', $posts, 3600);
 
 // Retrieve
 $posts = $cache->get('posts');
@@ -882,8 +895,8 @@ $user = User::where('id', $id)->first();
 
 **Example Code - In Controller:**
 ```php
-use FF\Framework\Security\RateLimiter;
-use FF\Framework\Cache\Cache;
+use FF\Security\RateLimiter;
+use FF\Cache\Cache;
 
 $limiter = new RateLimiter(new Cache());
 $identifier = $_SERVER['REMOTE_ADDR'];
@@ -966,7 +979,7 @@ $session->flush(); // Clear all
 
 **Why Fast:**
 - Lightweight core (47 PHP files, 8.6KB total)
-- No heavy dependencies (only phpdotenv)
+- Zero external dependencies (pure PHP)
 - Efficient Reflection-based DI container
 - Optimized SQL generation
 - Built-in query caching
@@ -1138,7 +1151,7 @@ FF Framework — это быстрый, безопасный и гибкий **P
 - 🎯 **Чистая архитектура** - MVC паттерн с внедрением зависимостей
 - 💪 **Мощный ORM** - Active Record паттерн с QueryBuilder
 - ⚡ **Современный PHP 8.1+** - Constructor promotion, typed properties, named arguments
-- 📦 **Нулевые зависимости** - Только vlucas/phpdotenv требуется
+- 📦 **Нулевые зависимости** - Чистый PHP, никаких внешних библиотек не требуется
 - 🧪 **100% тестируемость** - Полное покрытие тестами с примерами
 - 📚 **Полная документация** - Руководства по API, роутингу, БД, безопасности
 
@@ -1555,7 +1568,7 @@ event()->dispatch('user.created', [$user]);
 
 **Почему быстро:**
 - Легкое ядро (47 PHP файлов, 8.6KB всего)
-- Нет тяжелых зависимостей (только phpdotenv)
+- Нулевые внешние зависимости (чистый PHP)
 - Эффективный DI контейнер на основе Reflection
 - Оптимизированная генерация SQL
 - Встроенное кеширование запросов
@@ -1581,6 +1594,18 @@ event()->dispatch('user.created', [$user]);
 - **Регенерация сессии** - Предотвращение фиксирования сессии
 - **Rate limiting** - Смягчение атак DOS
 - **Безопасные cookies** - HttpOnly, Secure флаги
+
+Советы:
+
+- В макете экранируйте заголовок страницы: `<?php echo h($title ?? 'Приложение'); ?>` внутри `<title>`.
+- Санитизируйте HTML, созданный пользователем (белый список тегов/атрибутов), и рендерьте через `raw_html($clean)` только после корректной очистки.
+
+```php
+// Пример: санитизация и рендер доверенного HTML
+$raw = $request->input('content');
+$clean = Sanitizer::cleanHtml($raw); // или используйте HTML Purifier
+echo raw_html($clean);
+```
 
 ### Чистая архитектура кода 📐
 
@@ -1674,6 +1699,34 @@ ff-framework/
 3. **Использование БД** - [docs/DATABASE.md](docs/DATABASE.md)
 4. **Best practices безопасности** - [docs/SECURITY.md](docs/SECURITY.md)
 5. **Справочник API** - [docs/API.md](docs/API.md)
+
+---
+
+## Known Limitations / Roadmap
+
+FF Framework is under active development. While core features work well, some areas need improvement:
+
+### Documentation Inconsistencies (Fixed ✅)
+- ~~Encryption helpers documented as `encrypt()`/`decrypt()` but actual API is `app('encrypt')->encrypt()`~~ ✅
+- ~~RateLimiter examples showed `tooManyAttempts()` instead of `isLimited()`~~ ✅
+- ~~Blade-like syntax (`{{ }}`) in docs despite pure PHP views~~ ✅
+- ~~Flash session examples used wrong API~~ ✅
+
+### Database
+- ✅ **Fixed**: Models and migrations now use consistent table names (`posts`, `categories`)
+- ✅ **Fixed**: Removed duplicate models (`BlogPost`, `BlogCategory`, `BlogComment`)
+
+### CLI Tools
+- ✅ **Fixed**: Removed legacy `setup_db.php`/`seed_db.php` that loaded HTTP bootstrap
+- Artisan commands use proper lightweight bootstrap
+
+### Ongoing Work
+- Additional validation rules
+- More comprehensive test coverage
+- Performance profiling tools
+- Queue system for background jobs
+
+**See [codex-framework.md](codex-framework.md) for detailed audit and fixes.**
 
 ---
 

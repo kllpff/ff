@@ -2,10 +2,9 @@
 
 namespace App\Controllers\Api;
 
-use FF\Framework\Http\Request;
-use FF\Framework\Http\Response;
+use FF\Http\Request;
+use FF\Http\Response;
 use App\Models\Post;
-use App\Models\Category;
 
 /**
  * PostController API
@@ -163,10 +162,6 @@ class PostController
      */
     private function json($data, int $status = 200): Response
     {
-        return new Response(
-            json_encode($data),
-            $status,
-            ['Content-Type' => 'application/json']
-        );
+        return response()->json($data, $status);
     }
 }

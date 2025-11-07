@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Database;
+namespace FF\Database;
 
 use Closure;
 
@@ -13,6 +13,66 @@ class SchemaBuilder
 {
     protected Connection $connection;
     protected ?Table $table = null;
+    
+    /**
+     * Validate and normalize SQL identifiers (tables, columns, indexes).
+     */
+    protected function formatIdentifier(string $identifier, string $context): string
+    {
+        $identifier = trim($identifier);
+
+        // Support identifier aliases via "AS" or space
+        if (stripos($identifier, ' as ') !== false) {
+            [$root, $alias] = preg_split('/\s+as\s+/i', $identifier);
+            return sprintf(
+                '%s AS %s',
+                $this->formatIdentifier($root, $context),
+                $this->formatIdentifier($alias, "$context alias")
+            );
+        }
+
+        if (preg_match('/\s+/', $identifier)) {
+            $parts = preg_split('/\s+/', $identifier);
+            if (count($parts) === 2) {
+                return sprintf(
+                    '%s AS %s',
+                    $this->formatIdentifier($parts[0], $context),
+                    $this->formatIdentifier($parts[1], "$context alias")
+                );
+            }
+
+            throw new \InvalidArgumentException("Invalid {$context}: {$identifier}");
+        }
+
+        // Allow dot-separated segments (e.g. schema.table, table.column)
+        $pattern = '/^(?:[A-Za-z_][A-Za-z0-9_]*)(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/';
+        if (!preg_match($pattern, $identifier)) {
+            throw new \InvalidArgumentException("Invalid {$context}: {$identifier}");
+        }
+
+        return $identifier;
+    }
+
+    /**
+     * Quote literal values safely using PDO quoting (for DEFAULTs, COMMENTS).
+     */
+    protected function quoteLiteral($value): string
+    {
+        if (is_string($value)) {
+            return $this->connection->getPdo()->quote($value);
+        }
+        if (is_bool($value)) {
+            return $value ? '1' : '0';
+        }
+        if ($value === null) {
+            return 'NULL';
+        }
+        if (is_numeric($value)) {
+            return (string)$value;
+        }
+        // Fallback: string-quote any other types
+        return $this->connection->getPdo()->quote((string)$value);
+    }
 
     public function __construct(Connection $connection)
     {
@@ -44,7 +104,7 @@ class SchemaBuilder
      */
     public function drop(string $table): void
     {
-        $sql = "DROP TABLE $table";
+        $sql = "DROP TABLE " . $this->formatIdentifier($table, 'table');
         $this->connection->statement($sql);
     }
 
@@ -53,7 +113,7 @@ class SchemaBuilder
      */
     public function dropIfExists(string $table): void
     {
-        $sql = "DROP TABLE IF EXISTS $table";
+        $sql = "DROP TABLE IF EXISTS " . $this->formatIdentifier($table, 'table');
         $this->connection->statement($sql);
     }
 
@@ -86,7 +146,7 @@ class SchemaBuilder
      */
     protected function compileCreate(): string
     {
-        $name = $this->table->getName();
+        $name = $this->formatIdentifier($this->table->getName(), 'table');
         $columns = $this->compileColumns();
         $keys = $this->compileKeys();
 
@@ -113,7 +173,7 @@ class SchemaBuilder
      */
     protected function compileColumn(Column $column): string
     {
-        $sql = $column->getName() . ' ' . $this->getColumnType($column);
+        $sql = $this->formatIdentifier($column->getName(), 'column') . ' ' . $this->getColumnType($column);
 
         if ($column->isNullable() === false) {
             $sql .= ' NOT NULL';
@@ -121,11 +181,7 @@ class SchemaBuilder
 
         if ($column->getDefault() !== null) {
             $default = $column->getDefault();
-            if (is_string($default)) {
-                $sql .= " DEFAULT '$default'";
-            } else {
-                $sql .= " DEFAULT $default";
-            }
+            $sql .= ' DEFAULT ' . $this->quoteLiteral($default);
         }
 
         if ($column->isAutoIncrement()) {
@@ -134,7 +190,7 @@ class SchemaBuilder
 
         if ($column->getComment()) {
             $comment = $column->getComment();
-            $sql .= " COMMENT '$comment'";
+            $sql .= ' COMMENT ' . $this->quoteLiteral($comment);
         }
 
         return $sql;
@@ -188,24 +244,28 @@ class SchemaBuilder
         $lines = [];
 
         foreach ($this->table->getPrimaryKeys() as $key) {
-            $columns = implode(', ', $key);
+            $columns = implode(', ', array_map(fn($c) => '`' . $this->formatIdentifier($c, 'column') . '`', $key));
             $lines[] = "  PRIMARY KEY ($columns)";
         }
 
         foreach ($this->table->getUniqueKeys() as $name => $columns) {
-            $columnStr = implode(', ', $columns);
-            $lines[] = "  UNIQUE KEY `$name` ($columnStr)";
+            $safeName = $this->formatIdentifier($name, 'index name');
+            $columnStr = implode(', ', array_map(fn($c) => '`' . $this->formatIdentifier($c, 'column') . '`', $columns));
+            $lines[] = "  UNIQUE KEY `{$safeName}` ($columnStr)";
         }
 
         foreach ($this->table->getForeignKeys() as $name => $fk) {
-            $local = implode(', ', $fk['columns']);
-            $foreign = implode(', ', $fk['references']);
-            $lines[] = "  CONSTRAINT `$name` FOREIGN KEY ($local) REFERENCES `{$fk['table']}` ($foreign)";
+            $safeName = $this->formatIdentifier($name, 'constraint name');
+            $local = implode(', ', array_map(fn($c) => '`' . $this->formatIdentifier($c, 'column') . '`', $fk['columns']));
+            $foreign = implode(', ', array_map(fn($c) => '`' . $this->formatIdentifier($c, 'column') . '`', $fk['references']));
+            $safeForeignTable = $this->formatIdentifier($fk['table'], 'table');
+            $lines[] = "  CONSTRAINT `{$safeName}` FOREIGN KEY ($local) REFERENCES `{$safeForeignTable}` ($foreign)";
         }
 
         foreach ($this->table->getIndexes() as $name => $columns) {
-            $columnStr = implode(', ', $columns);
-            $lines[] = "  INDEX `$name` ($columnStr)";
+            $safeName = $this->formatIdentifier($name, 'index name');
+            $columnStr = implode(', ', array_map(fn($c) => '`' . $this->formatIdentifier($c, 'column') . '`', $columns));
+            $lines[] = "  INDEX `{$safeName}` ($columnStr)";
         }
 
         return implode(",\n", $lines);
@@ -216,7 +276,7 @@ class SchemaBuilder
      */
     protected function compileCommand(array $command): string
     {
-        $table = $this->table->getName();
+        $table = $this->formatIdentifier($this->table->getName(), 'table');
         $action = $command['action'];
 
         switch ($action) {
@@ -226,12 +286,12 @@ class SchemaBuilder
                 return "ALTER TABLE $table ADD COLUMN $definition";
 
             case 'drop':
-                $column = $command['column'];
+                $column = $this->formatIdentifier($command['column'], 'column');
                 return "ALTER TABLE $table DROP COLUMN $column";
 
             case 'rename':
-                $old = $command['old'];
-                $new = $command['new'];
+                $old = $this->formatIdentifier($command['old'], 'column');
+                $new = $this->formatIdentifier($command['new'], 'column');
                 return "ALTER TABLE $table RENAME COLUMN $old TO $new";
 
             case 'modify':

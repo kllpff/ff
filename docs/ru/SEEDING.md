@@ -11,7 +11,7 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 // Создать соединение с базой данных
-$connection = app(\FF\Framework\Database\Connection::class);
+$connection = app(\FF\Database\Connection::class);
 
 // Заполнить пользователей
 for ($i = 1; $i <= 5; $i++) {

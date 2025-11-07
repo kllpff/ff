@@ -33,8 +33,9 @@ session()->flash('success', 'Item saved successfully!');
 session()->flash('error', 'Something went wrong!');
 
 // In view
-if (session('success')) {
-    echo session('success');
+$message = session()->getFlash('success');
+if ($message) {
+    echo $message;
 }</pre>
             </div>
 

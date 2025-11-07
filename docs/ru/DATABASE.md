@@ -75,7 +75,8 @@ User::whereNotNull('verified_at')->get();
 User::whereBetween('age', [18, 65])->get();
 
 // Сырой SQL
-User::whereRaw('YEAR(created_at) = 2024')->get();
+User::whereRaw('YEAR(created_at) = ?', [2024])->get();
+User::whereRaw('DATE(created_at) BETWEEN ? AND ?', ['2024-01-01', '2024-12-31'])->get();
 ```
 
 ### ORDER & LIMIT
@@ -259,7 +260,7 @@ $users = DB::query(
     ['active']
 );
 
-$connection = app(\FF\Framework\Database\Connection::class);
+$connection = app(\FF\Database\Connection::class);
 $results = $connection->query("SELECT * FROM users");
 ```
 

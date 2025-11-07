@@ -11,9 +11,10 @@
  * $router->group(['middleware' => [$middleware]], function($router) { ... });
  */
 
-use FF\Framework\Http\Router;
-use FF\Framework\Http\Middleware\RateLimitMiddleware;
-use FF\Framework\Http\Middleware\AuthMiddleware;
+use App\Middleware\ApiAuthMiddleware;
+use FF\Http\Router;
+use FF\Http\Middleware\RateLimitMiddleware;
+use FF\Http\Middleware\AuthMiddleware;
 
 return function(Router $router) {
     // ===== PUBLIC ROUTES =====
@@ -28,15 +29,15 @@ return function(Router $router) {
     $router->get('/blog/{slug}', 'App\\Controllers\\BlogController@show')->name('blog.show');
     
     // ===== API ROUTES =====
-    
-    // API Posts (JSON responses)
-    $router->get('/api/posts', 'App\\Controllers\\Api\\PostController@index')->name('api.posts.index');
-    $router->get('/api/posts/{id}', 'App\\Controllers\\Api\\PostController@show')->name('api.posts.show');
-    $router->post('/api/posts', 'App\\Controllers\\Api\\PostController@store')
-        ->name('api.posts.store')
-        ->middleware(new RateLimitMiddleware(10, 60)); // 10 posts per hour
-    $router->put('/api/posts/{id}', 'App\\Controllers\\Api\\PostController@update')->name('api.posts.update');
-    $router->delete('/api/posts/{id}', 'App\\Controllers\\Api\\PostController@destroy')->name('api.posts.destroy');
+    $router->group(['middleware' => [new ApiAuthMiddleware(), new RateLimitMiddleware(60, 1)]], function($router) {
+        $router->get('/api/posts', 'App\\Controllers\\Api\\PostController@index')->name('api.posts.index');
+        $router->get('/api/posts/{id}', 'App\\Controllers\\Api\\PostController@show')->name('api.posts.show');
+        $router->post('/api/posts', 'App\\Controllers\\Api\\PostController@store')
+            ->name('api.posts.store')
+            ->middleware(new RateLimitMiddleware(10, 60)); // 10 posts per hour
+        $router->put('/api/posts/{id}', 'App\\Controllers\\Api\\PostController@update')->name('api.posts.update');
+        $router->delete('/api/posts/{id}', 'App\\Controllers\\Api\\PostController@destroy')->name('api.posts.destroy');
+    });
     
     // ===== AUTHENTICATION ROUTES =====
     

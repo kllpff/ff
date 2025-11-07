@@ -21,13 +21,31 @@ request()                           // Get current request
 request()->input('name')            // Get input
 request()->all()                    // All input
 request()->validate([...])          // Validate input
-request()->url()                    // Current URL
+request()->url()                    // Current absolute URL
 
 response($content, 200)             // Create response
 response()->json($data)             // JSON response
 redirect('/url')                    // Redirect
 route('name', ['id' => 1])         // Route URL
-url('/path')                        // URL
+url('/path')                        // Absolute URL (based on APP_URL)
+```
+
+Best practices for APIs:
+
+- Prefer `response()->json($data)` to ensure correct headers and encoding.
+- Avoid manual `echo` for JSON or setting headers yourself.
+- Returning arrays/objects from API controllers may be converted to JSON automatically, but explicit `response()->json(...)` keeps responses consistent and controllable.
+
+```php
+// Example in controller
+public function index()
+{
+    $users = User::all();
+    return response()->json([
+        'ok' => true,
+        'data' => $users,
+    ]);
+}
 ```
 
 ### Views

@@ -4,9 +4,9 @@ namespace App\Controllers;
 
 use App\Models\User;
 use App\Models\Post;
-use FF\Framework\Http\Request;
-use FF\Framework\Http\Response;
-use FF\Framework\Validation\Validator;
+use FF\Http\Request;
+use FF\Http\Response;
+use FF\Validation\Validator;
 
 /**
  * DashboardController

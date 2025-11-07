@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Database;
+namespace FF\Database;
 
 /**
  * Table - Schema Table Definition

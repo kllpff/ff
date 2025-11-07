@@ -4,12 +4,12 @@ namespace App\Controllers;
 
 use App\Models\User;
 use App\Services\EmailService;
-use FF\Framework\Http\Request;
-use FF\Framework\Http\Response;
-use FF\Framework\Security\Hash;
-use FF\Framework\Validation\Validator;
-use FF\Framework\Log\Logger;
-use FF\Framework\Security\RateLimiter;
+use FF\Http\Request;
+use FF\Http\Response;
+use FF\Security\Hash;
+use FF\Validation\Validator;
+use FF\Log\Logger;
+use FF\Security\RateLimiter;
 
 /**
  * AuthController
@@ -258,6 +258,7 @@ class AuthController
         }
 
         // Login user
+        session()->regenerate();
         session()->put('auth_user_id', $user->id);
         session()->put('auth_user', [
             'id' => $user->id,
@@ -288,6 +289,7 @@ class AuthController
         
         session()->forget('auth_user_id');
         session()->forget('auth_user');
+        session()->regenerate();
         session()->flash('success', 'Logged out successfully');
         return redirect('/');
     }

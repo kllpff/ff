@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Console;
+namespace FF\Console;
 
 /**
  * CLI - Command Line Interface Manager
@@ -9,14 +9,14 @@ class CLI
 {
     protected array $commands = [];
     protected array $builtInCommands = [
-        'migrate' => 'FF\Framework\Console\Commands\MigrateCommand',
-        'migrate:rollback' => 'FF\Framework\Console\Commands\MigrateRollbackCommand',
-        'make:controller' => 'FF\Framework\Console\Commands\MakeControllerCommand',
-        'make:model' => 'FF\Framework\Console\Commands\MakeModelCommand',
-        'make:migration' => 'FF\Framework\Console\Commands\MakeMigrationCommand',
-        'make:seeder' => 'FF\Framework\Console\Commands\MakeSeederCommand',
-        'cache:clear' => 'FF\Framework\Console\Commands\CacheClearCommand',
-        'serve' => 'FF\Framework\Console\Commands\ServeCommand',
+        'migrate' => 'FF\Console\Commands\MigrateCommand',
+        'migrate:rollback' => 'FF\Console\Commands\MigrateRollbackCommand',
+        'make:controller' => 'FF\Console\Commands\MakeControllerCommand',
+        'make:model' => 'FF\Console\Commands\MakeModelCommand',
+        'make:migration' => 'FF\Console\Commands\MakeMigrationCommand',
+        'make:seeder' => 'FF\Console\Commands\MakeSeederCommand',
+        'cache:clear' => 'FF\Console\Commands\CacheClearCommand',
+        'serve' => 'FF\Console\Commands\ServeCommand',
     ];
 
     public function __construct()

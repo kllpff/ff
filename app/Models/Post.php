@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use FF\Framework\Database\Model;
+use FF\Database\Model;
 
 /**
  * Post Model
@@ -16,7 +16,7 @@ class Post extends Model
      * 
      * @var string
      */
-    protected string $table = 'blog_posts';
+    protected string $table = 'posts';
 
     /**
      * The attributes that are mass assignable
@@ -36,7 +36,7 @@ class Post extends Model
     /**
      * Get post's author relationship
      * 
-     * @return \FF\Framework\Database\QueryBuilder
+     * @return \FF\Database\QueryBuilder
      */
     public function user()
     {
@@ -46,7 +46,7 @@ class Post extends Model
     /**
      * Get post's category relationship
      * 
-     * @return \FF\Framework\Database\QueryBuilder
+     * @return \FF\Database\QueryBuilder
      */
     public function category()
     {
@@ -102,7 +102,7 @@ class Post extends Model
     /**
      * Scope to get only published posts
      * 
-     * @return \FF\Framework\Database\QueryBuilder
+     * @return \FF\Database\QueryBuilder
      */
     public static function published()
     {

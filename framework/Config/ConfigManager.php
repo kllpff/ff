@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Config;
+namespace FF\Config;
 
 /**
  * ConfigManager - Configuration Manager

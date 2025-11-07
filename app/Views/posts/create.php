@@ -7,6 +7,7 @@
         <div class="max-w-2xl mx-auto">
             <div class="card">
                 <form method="POST" action="/dashboard/posts">
+                    <?php echo csrf_field(); ?>
                     <div class="form-group">
                         <label for="title" class="form-label">Title</label>
                         <input type="text" id="title" name="title" class="form-input" required>

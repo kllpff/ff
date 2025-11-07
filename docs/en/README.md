@@ -53,7 +53,7 @@ Complete documentation for FF Framework - a modern PHP 8.1+ MVC framework.
 💪 **Powerful** - Active Record ORM with QueryBuilder  
 📝 **Validation** - 20+ built-in validation rules  
 🗄️ **Database** - Migrations, seeding, transactions  
-📦 **Zero Dependencies** - Only phpdotenv required  
+📦 **Zero Dependencies** - Pure PHP, no external libraries required  
 📚 **Well Documented** - Complete API reference with examples  
 
 ## System Requirements

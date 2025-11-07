@@ -8,8 +8,8 @@
 
             <div class="card mb-6">
                 <h2 class="text-2xl font-bold mb-4">Registration</h2>
-                <pre class="code-block">use FF\Framework\Security\Auth;
-use FF\Framework\Security\Hash;
+                <pre class="code-block">use FF\Security\Auth;
+use FF\Security\Hash;
 
 $user = User::create([
     'name' => $request->input('name'),

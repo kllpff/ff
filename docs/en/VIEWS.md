@@ -37,7 +37,7 @@ Use layouts for consistent HTML structure:
 <!DOCTYPE html>
 <html>
 <head>
-    <title><?php echo $title ?? 'App'; ?></title>
+    <title><?php echo h($title ?? 'App'); ?></title>
 </head>
 <body>
     <header>Header</header>

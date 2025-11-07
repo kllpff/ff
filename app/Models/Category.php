@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use FF\Framework\Database\Model;
+use FF\Database\Model;
 
 /**
  * Category Model
@@ -32,7 +32,7 @@ class Category extends Model
     /**
      * Get category's posts relationship
      * 
-     * @return \FF\Framework\Database\QueryBuilder
+     * @return \FF\Database\QueryBuilder
      */
     public function posts()
     {

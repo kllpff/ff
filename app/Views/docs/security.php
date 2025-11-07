@@ -8,7 +8,7 @@
 
             <div class="card mb-6">
                 <h2 class="text-2xl font-bold mb-4">Password Hashing</h2>
-                <pre class="code-block">use FF\Framework\Security\Hash;
+                <pre class="code-block">use FF\Security\Hash;
 
 $hashed = Hash::make('password');
 
@@ -28,7 +28,7 @@ if (Hash::check('password', $hashed)) {
 
             <div class="card mb-6">
                 <h2 class="text-2xl font-bold mb-4">Data Encryption</h2>
-                <pre class="code-block">use FF\Framework\Security\Encrypt;
+                <pre class="code-block">use FF\Security\Encrypt;
 
 $encrypted = Encrypt::encrypt('sensitive data');
 $decrypted = Encrypt::decrypt($encrypted);</pre>
@@ -36,7 +36,7 @@ $decrypted = Encrypt::decrypt($encrypted);</pre>
 
             <div class="card mb-6">
                 <h2 class="text-2xl font-bold mb-4">Rate Limiting</h2>
-                <pre class="code-block">use FF\Framework\Http\RateLimiter;
+                <pre class="code-block">use FF\Http\RateLimiter;
 
 $limiter = new RateLimiter();
 if ($limiter->tooManyAttempts('login:' . $ip, 5, 60)) {

@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Http;
+namespace FF\Http;
 
 /**
  * Response - HTTP Response Class
@@ -97,7 +97,8 @@ class Response
      */
     public function header(string $key, string $value): self
     {
-        $this->headers[$key] = $value;
+        $normalizedKey = $this->normalizeHeaderName($key);
+        $this->headers[$normalizedKey] = $this->sanitizeHeaderValue($value);
         return $this;
     }
 
@@ -126,6 +127,18 @@ class Response
     }
 
     /**
+     * Get a single response header by name
+     *
+     * @param string $key The header name
+     * @return string|null The header value or null if not set
+     */
+    public function getHeader(string $key): ?string
+    {
+        $normalizedKey = $this->normalizeHeaderName($key);
+        return $this->headers[$normalizedKey] ?? null;
+    }
+
+    /**
      * Return a JSON response
      * 
      * @param mixed $data Data to encode as JSON
@@ -135,8 +148,8 @@ class Response
     public function json($data, int $status = 200): self
     {
         $this->statusCode = $status;
-        $this->headers['Content-Type'] = 'application/json';
-        $this->content = json_encode($data);
+        $this->header('Content-Type', 'application/json');
+        $this->content = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         return $this;
     }
 
@@ -150,7 +163,67 @@ class Response
     public function redirect(string $url, int $status = 302): self
     {
         $this->statusCode = $status;
-        $this->headers['Location'] = $url;
+        $this->header('Location', $this->sanitizeRedirectUrl($url));
+        return $this;
+    }
+
+    /**
+     * Return a file download response.
+     *
+     * Sets appropriate headers and loads file contents into response body.
+     *
+     * @param string $path Absolute filesystem path to the file
+     * @param string|null $filename Optional filename for the browser
+     * @param array $headers Additional headers to include
+     * @return self
+     */
+    public function download(string $path, ?string $filename = null, array $headers = []): self
+    {
+        $trimmedPath = trim($path);
+        if ($trimmedPath === '' || preg_match("/[\r\n]/", $trimmedPath)) {
+            throw new \InvalidArgumentException('Invalid file path.');
+        }
+
+        if (!is_file($trimmedPath) || !is_readable($trimmedPath)) {
+            $this->setStatusCode(404);
+            $this->content = '';
+            return $this;
+        }
+
+        $name = $filename !== null && $filename !== '' ? $filename : basename($trimmedPath);
+        $name = trim(str_replace(["\r", "\n"], '', $name));
+
+        // Determine content type
+        $mime = 'application/octet-stream';
+        if (function_exists('mime_content_type')) {
+            $detected = @mime_content_type($trimmedPath);
+            if ($detected && is_string($detected)) {
+                $mime = $detected;
+            }
+        }
+
+        $this->header('Content-Type', $mime);
+        $this->header('Content-Disposition', 'attachment; filename="' . $name . '"');
+
+        $size = @filesize($trimmedPath);
+        if ($size !== false) {
+            $this->header('Content-Length', (string)$size);
+        }
+
+        if (!empty($headers)) {
+            $this->withHeaders($headers);
+        }
+
+        $this->setStatusCode(200);
+        $contents = @file_get_contents($trimmedPath);
+        if ($contents === false) {
+            // If reading failed, return 500
+            $this->setStatusCode(500);
+            $this->content = '';
+            return $this;
+        }
+
+        $this->content = $contents;
         return $this;
     }
 
@@ -171,5 +244,48 @@ class Response
 
         // Output content
         echo $this->content;
+    }
+
+    /**
+     * Normalize header names to Title-Case and validate characters.
+     */
+    protected function normalizeHeaderName(string $name): string
+    {
+        $trimmed = trim($name);
+
+        if ($trimmed === '' || preg_match('/[^A-Za-z0-9\-]/', $trimmed)) {
+            throw new \InvalidArgumentException("Invalid header name: {$name}");
+        }
+
+        $parts = explode('-', strtolower($trimmed));
+        $parts = array_map(static fn ($part) => ucfirst($part), $parts);
+
+        return implode('-', $parts);
+    }
+
+    /**
+     * Ensure header value does not contain CRLF sequences.
+     */
+    protected function sanitizeHeaderValue(string $value): string
+    {
+        if (preg_match("/[\r\n]/", $value)) {
+            throw new \InvalidArgumentException('Header values must not contain CR or LF characters.');
+        }
+
+        return trim($value);
+    }
+
+    /**
+     * Sanitize redirect URL to prevent response splitting.
+     */
+    protected function sanitizeRedirectUrl(string $url): string
+    {
+        $trimmed = trim($url);
+
+        if ($trimmed === '' || preg_match("/[\r\n]/", $trimmed)) {
+            throw new \InvalidArgumentException('Invalid redirect URL.');
+        }
+
+        return $trimmed;
     }
 }

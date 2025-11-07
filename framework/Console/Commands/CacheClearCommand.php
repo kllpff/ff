@@ -1,8 +1,8 @@
 <?php
 
-namespace FF\Framework\Console\Commands;
+namespace FF\Console\Commands;
 
-use FF\Framework\Console\Command;
+use FF\Console\Command;
 
 /**
  * CacheClearCommand - Clear all application cache

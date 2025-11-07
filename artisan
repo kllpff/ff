@@ -12,7 +12,7 @@ require __DIR__ . '/vendor/autoload.php';
 
 // Load environment variables
 if (file_exists(__DIR__ . '/.env')) {
-    $dotenv = \Dotenv\Dotenv::createImmutable(__DIR__);
+    $dotenv = \FF\Support\DotEnv::createImmutable(__DIR__);
     $dotenv->load();
 }
 
@@ -25,7 +25,7 @@ if (file_exists(__DIR__ . '/framework/helpers.php')) {
 }
 
 // Create application instance
-$app = new \FF\Framework\Core\Application(__DIR__);
+$app = new \FF\Core\Application(__DIR__);
 
 // Make it available globally
 $GLOBALS['application'] = $app;
@@ -34,7 +34,7 @@ $GLOBALS['application'] = $app;
 $app->bootstrap();
 
 // Create CLI instance
-$cli = new \FF\Framework\Console\CLI();
+$cli = new \FF\Console\CLI();
 
 // Run the command
 exit($cli->run());

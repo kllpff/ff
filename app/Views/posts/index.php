@@ -46,6 +46,7 @@
                                     <div class="flex gap-2">
                                         <a href="/dashboard/posts/<?php echo $post->id; ?>/edit" class="btn btn-sm btn-secondary">Edit</a>
                                         <form method="POST" action="/dashboard/posts/<?php echo $post->id; ?>" style="display: inline;">
+                                            <?php echo csrf_field(); ?>
                                             <input type="hidden" name="_method" value="DELETE">
                                             <button type="submit" class="btn btn-sm btn-accent" onclick="return confirm('Delete this post?')">Delete</button>
                                         </form>

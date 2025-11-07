@@ -1,9 +1,9 @@
 <?php
 
-namespace FF\Framework\Http;
+namespace FF\Http;
 
 use Closure;
-use FF\Framework\Core\Container;
+use FF\Core\Container;
 
 /**
  * Pipeline - Middleware Pipeline

@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Database;
+namespace FF\Database;
 
 /**
  * Column - Schema Column Definition

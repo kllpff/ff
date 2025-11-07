@@ -102,7 +102,7 @@ $router->group(['prefix' => 'api'], function($router) {
                     <p>Multiple ways to return responses from controllers.</p>
                     <ul>
                         <li>Render views: <code>view('name', $data)</code></li>
-                        <li>Return JSON: <code>json($data, 200)</code></li>
+                        <li>Return JSON: <code>response()->json($data)</code></li>
                         <li>Redirects: <code>redirect('/path')</code></li>
                         <li>Error responses: <code>error('Not found', 404)</code></li>
                     </ul>
@@ -112,7 +112,7 @@ $router->group(['prefix' => 'api'], function($router) {
 return view('blog.post', ['post' => $post]);
 
 // JSON response
-return json(['data' => $post], 200);
+return response()->json(['data' => $post]);
 
 // Redirect with message
 return redirect('/dashboard');
@@ -269,9 +269,10 @@ $session->put('auth_user', [
 $session->flash('success', 'Logged in!');
 
 // In view
-if(session('success')): ?>
-    &lt;div class="alert">&lt;?php echo session('success'); ?>&lt;/div>
-&lt;? endif; ?></code></div>
+$message = session()->getFlash('success');
+if ($message) {
+    echo '&lt;div class="alert">' . htmlspecialchars($message, ENT_QUOTES, 'UTF-8') . '&lt;/div>';
+}</code></div>
             </div>
         </div>
 

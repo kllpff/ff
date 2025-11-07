@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Session;
+namespace FF\Session;
 
 /**
  * SessionManager - Session Management
@@ -32,6 +32,11 @@ class SessionManager
     protected array $data = [];
 
     /**
+     * Inactivity timeout in seconds.
+     */
+    protected int $timeout = 0;
+
+    /**
      * Create a new SessionManager instance
      * 
      * @param array $config Session configuration
@@ -40,12 +45,16 @@ class SessionManager
     {
         $this->config = array_merge([
             'driver' => 'file',
-            'lifetime' => 120, // minutes
+            'lifetime' => 120,
+            'timeout' => 7200,
             'expire_on_close' => false,
             'secure' => false,
             'http_only' => true,
             'same_site' => 'Lax',
+            'domain' => '',
         ], $config);
+
+        $this->timeout = max(0, (int)$this->config['timeout']);
 
         $this->configurePHP();
     }
@@ -67,7 +76,7 @@ class SessionManager
         session_set_cookie_params([
             'lifetime' => $this->config['expire_on_close'] ? 0 : $this->config['lifetime'] * 60,
             'path' => '/',
-            'domain' => $_SERVER['HTTP_HOST'] ?? 'localhost',
+            'domain' => $this->determineCookieDomain(),
             'secure' => $this->config['secure'],
             'httponly' => $this->config['http_only'],
             'samesite' => $this->config['same_site'],
@@ -90,6 +99,8 @@ class SessionManager
         }
 
         $this->data = $_SESSION ?? [];
+        $this->enforceTimeout();
+        $this->updateActivityTimestamp();
         $this->started = true;
     }
 
@@ -135,7 +146,7 @@ class SessionManager
     public function set(string $key, $value): void
     {
         $this->setNestedValue($this->data, $key, $value);
-        $_SESSION[$key] = $value;
+        $this->setNestedValue($_SESSION, $key, $value);
     }
 
     /**
@@ -144,11 +155,20 @@ class SessionManager
      * @param array $data The data to put
      * @return void
      */
-    public function put(array $data): void
+    public function put($key, $value = null): void
     {
-        foreach ($data as $key => $value) {
-            $this->set($key, $value);
+        if (is_array($key) && $value === null) {
+            foreach ($key as $itemKey => $itemValue) {
+                $this->set($itemKey, $itemValue);
+            }
+            return;
         }
+
+        if (!is_string($key)) {
+            throw new \InvalidArgumentException('Session::put expects a string key or associative array.');
+        }
+
+        $this->set($key, $value);
     }
 
     /**
@@ -170,8 +190,8 @@ class SessionManager
      */
     public function forget(string $key): void
     {
-        unset($this->data[$key]);
-        unset($_SESSION[$key]);
+        $this->unsetNestedValue($this->data, $key);
+        $this->unsetNestedValue($_SESSION, $key);
     }
 
     /**
@@ -196,6 +216,55 @@ class SessionManager
     {
         $this->data = [];
         $_SESSION = [];
+        session_regenerate_id(true);
+    }
+
+    protected function enforceTimeout(): void
+    {
+        if ($this->timeout <= 0) {
+            return;
+        }
+
+        $lastActivity = $_SESSION['_meta']['last_activity'] ?? null;
+
+        if ($lastActivity !== null && (time() - (int)$lastActivity) > $this->timeout) {
+            $this->flush();
+        }
+    }
+
+    protected function updateActivityTimestamp(): void
+    {
+        $timestamp = time();
+        $_SESSION['_meta']['last_activity'] = $timestamp;
+        $this->data['_meta']['last_activity'] = $timestamp;
+    }
+
+    protected function determineCookieDomain(): string
+    {
+        $domain = trim((string)$this->config['domain']);
+
+        if ($domain === '') {
+            $appUrl = $_ENV['APP_URL'] ?? \env('APP_URL', '');
+            $parsed = $appUrl ? parse_url($appUrl, PHP_URL_HOST) : null;
+            $domain = $parsed ?: 'localhost';
+        }
+
+        return $this->sanitizeDomain($domain);
+    }
+
+    protected function sanitizeDomain(string $domain): string
+    {
+        $domain = strtolower(trim($domain));
+
+        if ($domain === '' || $domain === 'localhost') {
+            return '';
+        }
+
+        if (!preg_match('/^[a-z0-9.-]+$/', $domain)) {
+            return '';
+        }
+
+        return $domain;
     }
 
     /**
@@ -279,6 +348,35 @@ class SessionManager
         }
 
         $current = $value;
+    }
+
+    /**
+     * Remove nested value using dot notation.
+     *
+     * @param array $array
+     * @param string $key
+     * @return void
+     */
+    protected function unsetNestedValue(&$array, string $key): void
+    {
+        if (!is_array($array)) {
+            $array = [];
+        }
+
+        $keys = explode('.', $key);
+        $current = &$array;
+        $lastKey = array_pop($keys);
+
+        foreach ($keys as $segment) {
+            if (!is_array($current) || !array_key_exists($segment, $current)) {
+                return;
+            }
+            $current = &$current[$segment];
+        }
+
+        if (is_array($current) && array_key_exists($lastKey, $current)) {
+            unset($current[$lastKey]);
+        }
     }
 
     /**

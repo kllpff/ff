@@ -17,13 +17,27 @@ class LogUserRegistration
     public function handle(UserRegistered $event): void
     {
         try {
-            $logMessage = "[User Registered] ID: {$event->userId}, Name: {$event->name}, Email: {$event->email}, Time: " . date('Y-m-d H:i:s');
-            error_log($logMessage);
-            
+            // PII-safe logging: avoid name/email
+            \logger()->info('User registered', [
+                'event' => 'UserRegistered',
+                'user_id' => $event->userId,
+                'method' => $_SERVER['REQUEST_METHOD'] ?? null,
+                'uri' => $_SERVER['REQUEST_URI'] ?? null,
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+            ]);
+
             // Could write to database, analytics service, etc.
             // Example: Database::table('events')->insert([...]);
         } catch (\Exception $e) {
-            error_log("[Event Error] Failed to handle UserRegistered: " . $e->getMessage());
+            \logger()->error('Failed to handle UserRegistered', [
+                'event' => 'UserRegistered',
+                'user_id' => $event->userId,
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+                'method' => $_SERVER['REQUEST_METHOD'] ?? null,
+                'uri' => $_SERVER['REQUEST_URI'] ?? null,
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+            ]);
         }
     }
 }

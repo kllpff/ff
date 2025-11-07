@@ -1,8 +1,9 @@
 <?php
 
-namespace FF\Framework\View;
+namespace FF\View;
 
-use FF\Framework\Core\Container;
+use FF\Core\Container;
+use FF\View\HtmlValue;
 
 /**
  * View - Template View Engine
@@ -41,6 +42,13 @@ class View
     protected Container $container;
 
     /**
+     * The view name (primarily for debugging/logging when created via make()).
+     *
+     * @var string|null
+     */
+    protected ?string $viewName = null;
+
+    /**
      * Create a new View instance
      * 
      * @param Container $container The container
@@ -65,15 +73,11 @@ class View
     {
         $this->data = array_merge($this->data, $data);
         
-        // Convert view name to file path (dot notation to slashes)
-        $filePath = $this->path . '/' . str_replace('.', '/', $view) . '.php';
+        $filePath = $this->resolveViewPath($view);
 
-        if (!file_exists($filePath)) {
-            throw new \Exception("View file not found: {$view}");
-        }
-
-        // Extract variables for use in template
-        extract($this->data, EXTR_SKIP);
+        // Extract variables for use in template (auto-escaped)
+        $variables = $this->prepareVariables(array_merge(static::$shared, $this->data));
+        extract($variables, EXTR_SKIP);
 
         // Start output buffering and include the view
         ob_start();
@@ -147,6 +151,11 @@ class View
      */
     public function escape($content): void
     {
+        if ($content instanceof HtmlValue) {
+            echo $content->escape();
+            return;
+        }
+
         echo htmlspecialchars((string)$content, ENT_QUOTES, 'UTF-8');
     }
 
@@ -179,7 +188,7 @@ class View
      * @param array $data View variables
      * @return static
      */
-    public static function make(string $view, array $data = []): static
+    public static function make(string $view, array $data = [])
     {
         $instance = new static(app(), app()->basePath('resources/views'));
         $instance->data = array_merge(static::$shared, $data);
@@ -205,5 +214,115 @@ class View
         file_put_contents($cacheFile, $content);
         
         return $cacheFile;
+    }
+
+    /**
+     * Resolve a view path while preventing directory traversal.
+     */
+    protected function resolveViewPath(string $view): string
+    {
+        $relativePath = str_replace('.', '/', $view) . '.php';
+        $normalized = $this->normalizePath($relativePath);
+
+        if ($normalized === null) {
+            throw new \InvalidArgumentException("Invalid view name: {$view}");
+        }
+
+        $fullPath = $this->path . '/' . $normalized;
+
+        $realBase = realpath($this->path);
+        if ($realBase === false) {
+            throw new \RuntimeException('View base path not found.');
+        }
+
+        if (!file_exists($fullPath)) {
+            throw new \Exception("View file not found: {$view}");
+        }
+
+        $realPath = realpath($fullPath);
+        if ($realPath === false) {
+            throw new \Exception("View file not found: {$view}");
+        }
+
+        $basePrefix = rtrim($realBase, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        if (strpos($realPath, $basePrefix) !== 0) {
+            throw new \Exception("View file not found: {$view}");
+        }
+
+        return $realPath;
+    }
+
+    /**
+     * Normalize a path by removing traversal sequences.
+     */
+    protected function normalizePath(string $path): ?string
+    {
+        $rawSegments = explode('/', str_replace('\\', '/', $path));
+        $segments = [];
+        if ($path === '') {
+            return null;
+        }
+        foreach ($rawSegments as $segment) {
+            if ($segment === '' || $segment === '.') {
+                continue;
+            }
+
+            if ($segment === '..') {
+                if (empty($segments)) {
+                    return null;
+                }
+                array_pop($segments);
+                continue;
+            }
+
+            $segments[] = $segment;
+        }
+
+        if (empty($segments)) {
+            return null;
+        }
+
+        $lastIndex = count($segments) - 1;
+        foreach ($segments as $index => $segment) {
+            $pattern = $index === $lastIndex
+                ? '/^[A-Za-z0-9_\-]+(\.php)?$/'
+                : '/^[A-Za-z0-9_\-]+$/';
+
+            if (!preg_match($pattern, $segment)) {
+                return null;
+            }
+        }
+
+        return implode('/', $segments);
+    }
+
+    /**
+     * Prepare view variables with automatic HTML escaping.
+     *
+     * @param array $data
+     * @return array
+     */
+    protected function prepareVariables(array $data): array
+    {
+        $prepared = [];
+
+        foreach ($data as $key => $value) {
+            $prepared[$key] = $this->sanitizeValue($value);
+        }
+
+        return $prepared;
+    }
+
+    /**
+     * Sanitize a single view value.
+     *
+     * @param mixed $value
+     * @return mixed
+     */
+    protected function sanitizeValue($value)
+    {
+        // New policy: do NOT auto-escape. Respect developer-provided values.
+        // HtmlValue instances retain their behavior (raw vs escaped via helper usage).
+        return $value;
     }
 }

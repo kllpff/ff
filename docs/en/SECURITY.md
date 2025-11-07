@@ -7,7 +7,7 @@ Build secure applications with FF Framework.
 Always hash passwords:
 
 ```php
-use FF\Framework\Security\Hash;
+use FF\Security\Hash;
 
 // Hash
 $hashed = Hash::make('password123');
@@ -30,15 +30,20 @@ User::create([
 Encrypt sensitive data:
 
 ```php
-// Encrypt
-$encrypted = encrypt('credit-card-number');
+use FF\Security\Encrypt;
 
-// Decrypt
-$decrypted = decrypt($encrypted);
+// Using the service from container
+$encryptor = app('encrypt');
+$encrypted = $encryptor->encrypt('credit-card-number');
+$decrypted = $encryptor->decrypt($encrypted);
+
+// Or using static methods
+$encrypted = Encrypt::hash('credit-card-number');
+$decrypted = Encrypt::reveal($encrypted);
 
 // Store encrypted
 User::create([
-    'ssn' => encrypt('123-45-6789'),
+    'ssn' => $encryptor->encrypt('123-45-6789'),
 ]);
 ```
 
@@ -46,9 +51,9 @@ User::create([
 
 Protect forms from attacks:
 
-```html
+```php
 <form method="POST" action="/users">
-    {{ csrf_field() }}
+    <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
     <!-- form fields -->
 </form>
 ```
@@ -88,6 +93,27 @@ Always escape output:
 <p><?php echo htmlspecialchars($user->name, ENT_QUOTES, 'UTF-8'); ?></p>
 ```
 
+## Sanitizing HTML Content
+
+When rendering user-generated HTML (e.g., blog post body or comments), sanitize the content and allow only whitelisted tags/attributes. Escaping alone is not sufficient for rich text; combine sanitization with explicit rendering.
+
+```php
+// Example: sanitize HTML using a library or internal sanitizer
+$raw = $request->input('content');
+$clean = Sanitizer::cleanHtml($raw); // or use HTML Purifier or similar
+
+// Render trusted HTML explicitly
+echo raw_html($clean);
+```
+
+Guidelines:
+
+- Use `raw_html()` only for trusted, sanitized HTML.
+- Never echo raw user input directly.
+- Prefer `h()` for titles, plain text, and attributes.
+- Maintain a whitelist of allowed tags (e.g., `p`, `strong`, `em`, `ul`, `li`, `a`) and safe attributes (`href`, `title`) with proper validation.
+
+
 ## SQL Injection Prevention
 
 Use QueryBuilder (safe):
@@ -105,20 +131,20 @@ $user = DB::query("SELECT * FROM users WHERE email = '" . $email . "'");
 Prevent brute force attacks:
 
 ```php
-use FF\Framework\Security\RateLimiter;
+use FF\Security\RateLimiter;
 
-$limiter = new RateLimiter();
+$limiter = app('rateLimiter');
 
 public function login(Request $request)
 {
     $identifier = "login:" . $request->ip();
-    
-    if ($limiter->tooManyAttempts($identifier, 5)) {
-        return error('Too many login attempts');
+
+    if ($limiter->isLimited($identifier, 5, 15)) {
+        return response()->json(['error' => 'Too many login attempts'], 429);
     }
-    
+
     $limiter->recordAttempt($identifier, 15); // 15 minute window
-    
+
     // Authenticate...
 }
 ```
@@ -173,26 +199,38 @@ return response($content)
 ## File Upload Security
 
 ```php
+use FF\Http\Request;
+
 public function upload(Request $request)
 {
+    // Validation: required file, only jpg|png, size up to 2 MB
     $request->validate([
         'file' => 'required|file|mimes:jpg,png|max:2048',
     ]);
-    
+
     $file = $request->file('file');
-    
-    // Check MIME type
+
+    // Additional MIME check using file content
     $allowed = ['image/jpeg', 'image/png'];
-    if (!in_array($file->getMimeType(), $allowed)) {
+    if (!in_array($file->getMimeType(), $allowed, true)) {
         return error('Invalid file type');
     }
-    
-    // Save to storage (outside public)
-    $path = $file->move(storage_path('uploads'));
-    
+
+    // Safe move: ONLY public/uploads or storage/uploads are allowed
+    // Public avatars/images:
+    $path = $file->moveToPublicUploads('avatar_' . time() . '.jpg');
+
+    // Private documents (outside public directory):
+    // $path = $file->moveToStorageUploads('doc_' . time() . '.pdf');
+
     return $path;
 }
 ```
+
+Notes:
+- The `max` rule for files is in kilobytes: `max:2048` ≈ 2 MB.
+- `UploadedFile::moveToPublicUploads()` and `moveToStorageUploads()` enforce path checks and will block saving outside `public/uploads` or `storage/uploads`.
+- Use `storage/uploads` for sensitive data; use `public/uploads` for publicly accessible images.
 
 ## Environment Variables
 

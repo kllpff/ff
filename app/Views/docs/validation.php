@@ -8,7 +8,7 @@
 
             <div class="card mb-6">
                 <h2 class="text-2xl font-bold mb-4">Basic Validation</h2>
-                <pre class="code-block">use FF\Framework\Validation\Validator;
+                <pre class="code-block">use FF\Validation\Validator;
 
 $validator = new Validator($request->input(), [
     'email' => ['required', 'email'],

@@ -1,9 +1,11 @@
 <?php
 
-namespace FF\Framework\Database;
+namespace FF\Database;
 
+use InvalidArgumentException;
 use PDO;
 use PDOStatement;
+use FF\Exceptions\DatabaseException;
 
 /**
  * Connection - Database Connection Handler
@@ -76,12 +78,12 @@ class Connection
      */
     public function __construct(array $config)
     {
-        $this->driver = $config['driver'] ?? 'mysql';
-        $this->host = $config['host'] ?? 'localhost';
-        $this->database = $config['database'] ?? '';
-        $this->username = $config['username'] ?? 'root';
+        $this->driver = $this->sanitizeDriver($config['driver'] ?? 'mysql');
+        $this->host = $this->sanitizeHost($config['host'] ?? 'localhost');
+        $this->database = $this->sanitizeDatabaseName($config['database'] ?? '');
+        $this->username = $this->sanitizeUsername($config['username'] ?? 'root');
         $this->password = $config['password'] ?? '';
-        $this->port = $config['port'] ?? 3306;
+        $this->port = $this->sanitizePort($config['port'] ?? 3306);
 
         // Set default PDO options
         $this->options = [
@@ -101,20 +103,30 @@ class Connection
      * Establish the database connection
      * 
      * @return void
-     * @throws \Exception If connection fails
+     * @throws DatabaseException If connection fails
      */
     protected function connect(): void
     {
         try {
             if ($this->driver === 'mysql') {
-                $dsn = "mysql:host={$this->host};port={$this->port};dbname={$this->database}";
+                $dsn = sprintf(
+                    'mysql:host=%s;port=%d;dbname=%s',
+                    $this->host,
+                    $this->port,
+                    $this->database
+                );
                 // charset will be added via config, if provided
-            } else if ($this->driver === 'pgsql') {
-                $dsn = "pgsql:host={$this->host};port={$this->port};dbname={$this->database}";
-            } else if ($this->driver === 'sqlite') {
-                $dsn = "sqlite:{$this->database}";
+            } elseif ($this->driver === 'pgsql') {
+                $dsn = sprintf(
+                    'pgsql:host=%s;port=%d;dbname=%s',
+                    $this->host,
+                    $this->port,
+                    $this->database
+                );
+            } elseif ($this->driver === 'sqlite') {
+                $dsn = 'sqlite:' . $this->database;
             } else {
-                throw new \Exception("Unsupported database driver: {$this->driver}");
+                throw new DatabaseException("Unsupported database driver: {$this->driver}");
             }
 
             $this->pdo = new PDO(
@@ -124,8 +136,109 @@ class Connection
                 $this->options
             );
         } catch (\PDOException $e) {
-            throw new \Exception("Database connection failed: " . $e->getMessage());
+            throw new DatabaseException("Database connection failed: " . $e->getMessage(), 0, $e);
         }
+    }
+
+    /**
+     * Ensure the driver is one of the supported options.
+     */
+    protected function sanitizeDriver(string $driver): string
+    {
+        $driver = strtolower(trim($driver));
+        $allowed = ['mysql', 'pgsql', 'sqlite'];
+
+        if (!in_array($driver, $allowed, true)) {
+            throw new InvalidArgumentException('Unsupported database driver specified.');
+        }
+
+        return $driver;
+    }
+
+    /**
+     * Validate and sanitize the host component of the DSN.
+     */
+    protected function sanitizeHost(string $host): string
+    {
+        $host = trim($host);
+        if ($host === '') {
+            throw new InvalidArgumentException('Database host must not be empty.');
+        }
+
+        if ($this->driver === 'sqlite') {
+            return $host;
+        }
+
+        if (strpbrk($host, "\r\n\0\"'`") !== false || strpos($host, ';') !== false) {
+            throw new InvalidArgumentException('Database host contains invalid characters.');
+        }
+
+        return $host;
+    }
+
+    /**
+     * Validate the database name to avoid DSN injection.
+     */
+    protected function sanitizeDatabaseName(string $database): string
+    {
+        $database = trim($database);
+
+        if ($this->driver === 'sqlite') {
+            if ($database === '') {
+                throw new InvalidArgumentException('SQLite database path must not be empty.');
+            }
+
+            if (strpbrk($database, "\r\n\0") !== false) {
+                throw new InvalidArgumentException('SQLite database path contains invalid characters.');
+            }
+
+            return $database;
+        }
+
+        if ($database === '') {
+            throw new InvalidArgumentException('Database name must not be empty.');
+        }
+
+        if (strpbrk($database, "\r\n\0\"'`;") !== false) {
+            throw new InvalidArgumentException('Database name contains invalid characters.');
+        }
+
+        return $database;
+    }
+
+    /**
+     * Validate the username to prevent malformed DSNs.
+     */
+    protected function sanitizeUsername(string $username): string
+    {
+        $username = trim($username);
+        if ($username === '') {
+            throw new InvalidArgumentException('Database username must not be empty.');
+        }
+
+        if (strpbrk($username, "\r\n\0\"'`") !== false) {
+            throw new InvalidArgumentException('Database username contains invalid characters.');
+        }
+
+        return $username;
+    }
+
+    /**
+     * Validate and normalize the port value.
+     */
+    protected function sanitizePort($port): int
+    {
+        if (!is_numeric($port)) {
+            throw new InvalidArgumentException('Database port must be numeric.');
+        }
+
+        $port = (int)$port;
+
+        if ($port <= 0 || $port > 65535) {
+            throw new InvalidArgumentException('Database port must be between 1 and 65535.');
+        }
+
+        return $port;
     }
 
     /**
@@ -138,14 +251,32 @@ class Connection
     public function query(string $sql, array $bindings = []): array
     {
         $start = microtime(true);
-        $statement = $this->prepare($sql);
-        $this->bindValues($statement, $bindings);
-        $statement->execute();
-        $duration = (microtime(true) - $start) * 1000; // Convert to milliseconds
-        
-        $this->logQuery($sql, $bindings, $duration);
+        try {
+            $statement = $this->prepare($sql);
+            $this->bindValues($statement, $bindings);
+            $statement->execute();
+            $duration = (microtime(true) - $start) * 1000; // Convert to milliseconds
 
-        return $statement->fetchAll();
+            $this->logQuery($sql, $bindings, $duration);
+
+            return $statement->fetchAll();
+        } catch (\Throwable $e) {
+            $duration = (microtime(true) - $start) * 1000; // Convert to milliseconds
+            try {
+                \logger()->error('DB query failed', [
+                    'sql' => $sql,
+                    'bindings' => $bindings,
+                    'error' => $e->getMessage(),
+                    'driver' => $this->driver,
+                    'host' => $this->host,
+                    'database' => $this->database,
+                    'duration_ms' => $duration,
+                ]);
+            } catch (\Throwable $logError) {
+                // Logger not available
+            }
+            throw new DatabaseException('Database query failed: ' . $e->getMessage(), 0, $e);
+        }
     }
 
     /**
@@ -170,14 +301,32 @@ class Connection
     public function update(string $sql, array $bindings = []): int
     {
         $start = microtime(true);
-        $statement = $this->prepare($sql);
-        $this->bindValues($statement, $bindings);
-        $statement->execute();
-        $duration = (microtime(true) - $start) * 1000; // Convert to milliseconds
-        
-        $this->logQuery($sql, $bindings, $duration);
+        try {
+            $statement = $this->prepare($sql);
+            $this->bindValues($statement, $bindings);
+            $statement->execute();
+            $duration = (microtime(true) - $start) * 1000; // Convert to milliseconds
 
-        return $statement->rowCount();
+            $this->logQuery($sql, $bindings, $duration);
+
+            return $statement->rowCount();
+        } catch (\Throwable $e) {
+            $duration = (microtime(true) - $start) * 1000; // Convert to milliseconds
+            try {
+                \logger()->error('DB update failed', [
+                    'sql' => $sql,
+                    'bindings' => $bindings,
+                    'error' => $e->getMessage(),
+                    'driver' => $this->driver,
+                    'host' => $this->host,
+                    'database' => $this->database,
+                    'duration_ms' => $duration,
+                ]);
+            } catch (\Throwable $logError) {
+                // Logger not available
+            }
+            throw new DatabaseException('Database update failed: ' . $e->getMessage(), 0, $e);
+        }
     }
 
     /**
@@ -202,14 +351,32 @@ class Connection
     public function statement(string $sql, array $bindings = []): bool
     {
         $start = microtime(true);
-        $statement = $this->prepare($sql);
-        $this->bindValues($statement, $bindings);
-        $result = $statement->execute();
-        $duration = (microtime(true) - $start) * 1000; // Convert to milliseconds
-        
-        $this->logQuery($sql, $bindings, $duration);
+        try {
+            $statement = $this->prepare($sql);
+            $this->bindValues($statement, $bindings);
+            $result = $statement->execute();
+            $duration = (microtime(true) - $start) * 1000; // Convert to milliseconds
 
-        return $result;
+            $this->logQuery($sql, $bindings, $duration);
+
+            return $result;
+        } catch (\Throwable $e) {
+            $duration = (microtime(true) - $start) * 1000; // Convert to milliseconds
+            try {
+                \logger()->error('DB statement failed', [
+                    'sql' => $sql,
+                    'bindings' => $bindings,
+                    'error' => $e->getMessage(),
+                    'driver' => $this->driver,
+                    'host' => $this->host,
+                    'database' => $this->database,
+                    'duration_ms' => $duration,
+                ]);
+            } catch (\Throwable $logError) {
+                // Logger not available
+            }
+            throw new DatabaseException('Database statement failed: ' . $e->getMessage(), 0, $e);
+        }
     }
 
     /**
@@ -249,7 +416,21 @@ class Connection
      */
     public function beginTransaction(): void
     {
-        $this->pdo->beginTransaction();
+        try {
+            $this->pdo->beginTransaction();
+        } catch (\Throwable $e) {
+            try {
+                \logger()->error('DB beginTransaction failed', [
+                    'error' => $e->getMessage(),
+                    'driver' => $this->driver,
+                    'host' => $this->host,
+                    'database' => $this->database,
+                ]);
+            } catch (\Throwable $logError) {
+                // Logger not available
+            }
+            throw new DatabaseException('Begin transaction failed: ' . $e->getMessage(), 0, $e);
+        }
     }
 
     /**
@@ -259,7 +440,21 @@ class Connection
      */
     public function commit(): void
     {
-        $this->pdo->commit();
+        try {
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            try {
+                \logger()->error('DB commit failed', [
+                    'error' => $e->getMessage(),
+                    'driver' => $this->driver,
+                    'host' => $this->host,
+                    'database' => $this->database,
+                ]);
+            } catch (\Throwable $logError) {
+                // Logger not available
+            }
+            throw new DatabaseException('Commit failed: ' . $e->getMessage(), 0, $e);
+        }
     }
 
     /**
@@ -269,7 +464,21 @@ class Connection
      */
     public function rollback(): void
     {
-        $this->pdo->rollBack();
+        try {
+            $this->pdo->rollBack();
+        } catch (\Throwable $e) {
+            try {
+                \logger()->error('DB rollback failed', [
+                    'error' => $e->getMessage(),
+                    'driver' => $this->driver,
+                    'host' => $this->host,
+                    'database' => $this->database,
+                ]);
+            } catch (\Throwable $logError) {
+                // Logger not available
+            }
+            throw new DatabaseException('Rollback failed: ' . $e->getMessage(), 0, $e);
+        }
     }
 
     /**
@@ -288,6 +497,17 @@ class Connection
             return $result;
         } catch (\Throwable $e) {
             $this->rollback();
+            try {
+                \logger()->error('DB transaction failed; rolled back', [
+                    'error' => $e->getMessage(),
+                    'exception' => get_class($e),
+                    'driver' => $this->driver,
+                    'host' => $this->host,
+                    'database' => $this->database,
+                ]);
+            } catch (\Throwable $logError) {
+                // Logger not available
+            }
             throw $e;
         }
     }

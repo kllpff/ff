@@ -1,6 +1,6 @@
 <?php
 
-use FF\Framework\Core\Application;
+use FF\Core\Application;
 
 /**
  * Get the application instance or a binding from the container
@@ -99,18 +99,28 @@ function storage_path(string $path = ''): string
  */
 function config(string $key, $default = null)
 {
+    try {
+        $config = app('config');
+    } catch (\Throwable $e) {
+        $config = [];
+    }
+
+    if (!is_array($config)) {
+        $config = [];
+    }
+
     $parts = explode('.', $key);
-    $config = $_ENV['config'] ?? [];
+    $value = $config;
 
     foreach ($parts as $part) {
-        if (is_array($config) && isset($config[$part])) {
-            $config = $config[$part];
+        if (is_array($value) && array_key_exists($part, $value)) {
+            $value = $value[$part];
         } else {
             return $default;
         }
     }
 
-    return $config;
+    return $value;
 }
 
 /**

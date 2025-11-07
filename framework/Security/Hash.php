@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Security;
+namespace FF\Security;
 
 /**
  * Hash - Password Hashing Service

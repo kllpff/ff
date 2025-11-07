@@ -2,7 +2,7 @@
 
 namespace App\Controllers;
 
-use FF\Framework\Http\Response;
+use FF\Http\Response;
 
 /**
  * HomeController

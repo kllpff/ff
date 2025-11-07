@@ -1,11 +1,11 @@
 <?php
 
-namespace FF\Framework\Http\Middleware;
+namespace FF\Http\Middleware;
 
-use FF\Framework\Http\Request;
-use FF\Framework\Http\Response;
-use FF\Framework\Security\RateLimiter;
-use FF\Framework\Cache\Cache;
+use FF\Http\Request;
+use FF\Http\Response;
+use FF\Security\RateLimiter;
+use FF\Cache\Cache;
 use Closure;
 
 /**
@@ -27,15 +27,22 @@ class RateLimitMiddleware implements MiddlewareInterface
     protected int $decayMinutes = 1;
 
     /**
-     * Create a new middleware instance
+     * Shared limiter instance.
+     */
+    protected RateLimiter $limiter;
+
+    /**
+     * Create a new middleware instance.
      * 
      * @param int $maxAttempts Maximum attempts allowed
      * @param int $decayMinutes Decay window in minutes
+     * @param RateLimiter|null $limiter Optional shared limiter
      */
-    public function __construct(int $maxAttempts = 60, int $decayMinutes = 1)
+    public function __construct(int $maxAttempts = 60, int $decayMinutes = 1, ?RateLimiter $limiter = null)
     {
         $this->maxAttempts = $maxAttempts;
         $this->decayMinutes = $decayMinutes;
+        $this->limiter = $limiter ?? $this->resolveRateLimiter();
     }
 
     /**
@@ -47,27 +54,45 @@ class RateLimitMiddleware implements MiddlewareInterface
      */
     public function handle(Request $request, Closure $next)
     {
-        $limiter = new RateLimiter(new Cache());
-        $identifier = $_SERVER['REMOTE_ADDR']; // Use IP address
+        $identifier = $this->buildIdentifier($request);
 
-        // Check if rate limited
-        if ($limiter->isLimited($identifier, $this->maxAttempts, $this->decayMinutes)) {
-            // Return 429 Too Many Requests
-            return new Response(
-                json_encode([
-                    'error' => 'Too many requests',
-                    'message' => "You have exceeded the rate limit. Max {$this->maxAttempts} requests per {$this->decayMinutes} minute(s).",
-                    'retry_after' => $limiter->getRetryAfter($identifier, $this->decayMinutes),
-                ]),
-                429,
-                ['Content-Type' => 'application/json']
-            );
+        if ($this->limiter->isLimited($identifier, $this->maxAttempts, $this->decayMinutes)) {
+            return response()->json([
+                'error' => 'Too many requests',
+                'message' => "You have exceeded the rate limit. Max {$this->maxAttempts} requests per {$this->decayMinutes} minute(s).",
+                'retry_after' => $this->limiter->getRetryAfter($identifier, $this->decayMinutes),
+            ], 429);
         }
 
-        // Record this attempt
-        $limiter->recordAttempt($identifier, $this->decayMinutes);
+        $this->limiter->recordAttempt($identifier, $this->decayMinutes);
 
-        // Continue to next middleware
         return $next($request);
+    }
+
+    /**
+     * Build a scoped rate-limit key.
+     */
+    protected function buildIdentifier(Request $request): string
+    {
+        $ip = $request->ip();
+        $path = $request->getUri();
+
+        return sprintf('route:%s|ip:%s', $path, $ip);
+    }
+
+    /**
+     * Resolve shared RateLimiter from the container (fallback to default cache).
+     */
+    protected function resolveRateLimiter(): RateLimiter
+    {
+        try {
+            if (function_exists('app')) {
+                return app(RateLimiter::class);
+            }
+        } catch (\Throwable $e) {
+            // Fall back to local instance below
+        }
+
+        return new RateLimiter(new Cache());
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Database;
+namespace FF\Database;
 
 /**
  * QueryBuilder - Database Query Builder
@@ -39,7 +39,7 @@ class QueryBuilder
     public array $selects = [];
 
     /**
-     * WHERE conditions
+     * WHERE conditions (each item: ['connector' => 'AND'|'OR', 'sql' => string])
      * 
      * @var array
      */
@@ -167,7 +167,9 @@ class QueryBuilder
             $operator = '=';
         }
 
-        $this->wheres[] = "$column $operator ?";
+        $col = $this->formatIdentifier($column, 'where column');
+        $op = $this->validateOperator($operator ?? '=');
+        $this->wheres[] = ['connector' => 'AND', 'sql' => "$col $op ?"];
         $this->bindings[] = $value;
 
         return $this;
@@ -189,7 +191,9 @@ class QueryBuilder
             $operator = '=';
         }
 
-        $this->wheres[] = "OR $column $operator ?";
+        $col = $this->formatIdentifier($column, 'where column');
+        $op = $this->validateOperator($operator ?? '=');
+        $this->wheres[] = ['connector' => 'OR', 'sql' => "$col $op ?"];
         $this->bindings[] = $value;
 
         return $this;
@@ -204,8 +208,9 @@ class QueryBuilder
      */
     public function whereIn(string $column, array $values): self
     {
+        $col = $this->formatIdentifier($column, 'where column');
         $placeholders = implode(', ', array_fill(0, count($values), '?'));
-        $this->wheres[] = "$column IN ($placeholders)";
+        $this->wheres[] = ['connector' => 'AND', 'sql' => "$col IN ($placeholders)"];
         $this->bindings = array_merge($this->bindings, $values);
 
         return $this;
@@ -220,8 +225,9 @@ class QueryBuilder
      */
     public function whereNotIn(string $column, array $values): self
     {
+        $col = $this->formatIdentifier($column, 'where column');
         $placeholders = implode(', ', array_fill(0, count($values), '?'));
-        $this->wheres[] = "$column NOT IN ($placeholders)";
+        $this->wheres[] = ['connector' => 'AND', 'sql' => "$col NOT IN ($placeholders)"];
         $this->bindings = array_merge($this->bindings, $values);
 
         return $this;
@@ -235,7 +241,8 @@ class QueryBuilder
      */
     public function whereNull(string $column): self
     {
-        $this->wheres[] = "$column IS NULL";
+        $col = $this->formatIdentifier($column, 'where column');
+        $this->wheres[] = ['connector' => 'AND', 'sql' => "$col IS NULL"];
         return $this;
     }
 
@@ -247,7 +254,8 @@ class QueryBuilder
      */
     public function whereNotNull(string $column): self
     {
-        $this->wheres[] = "$column IS NOT NULL";
+        $col = $this->formatIdentifier($column, 'where column');
+        $this->wheres[] = ['connector' => 'AND', 'sql' => "$col IS NOT NULL"];
         return $this;
     }
 
@@ -260,7 +268,8 @@ class QueryBuilder
      */
     public function whereBetween(string $column, array $values): self
     {
-        $this->wheres[] = "$column BETWEEN ? AND ?";
+        $col = $this->formatIdentifier($column, 'where column');
+        $this->wheres[] = ['connector' => 'AND', 'sql' => "$col BETWEEN ? AND ?"];
         $this->bindings = array_merge($this->bindings, $values);
 
         return $this;
@@ -275,10 +284,29 @@ class QueryBuilder
      */
     public function whereRaw(string $sql, array $bindings = []): self
     {
-        $this->wheres[] = $sql;
+        // Raw clause is appended as-is; ensure bindings are used
+        $this->wheres[] = ['connector' => 'AND', 'sql' => $sql];
         $this->bindings = array_merge($this->bindings, $bindings);
 
         return $this;
+    }
+
+    /**
+     * Compile WHERE clause for ad-hoc statements (e.g., increment/decrement)
+     */
+    protected function compileWhereClause(): string
+    {
+        if (empty($this->wheres)) {
+            return '';
+        }
+
+        $out = '';
+        foreach ($this->wheres as $i => $w) {
+            $connector = $i === 0 ? '' : (' ' . (($w['connector'] ?? 'AND')) . ' ');
+            $out .= $connector . ($w['sql'] ?? (string)$w);
+        }
+
+        return ' WHERE ' . $out;
     }
 
     /**
@@ -292,7 +320,13 @@ class QueryBuilder
      */
     public function join(string $table, string $first, string $operator, string $second): self
     {
-        $this->joins[] = " INNER JOIN $table ON $first $operator $second";
+        $this->joins[] = sprintf(
+            ' INNER JOIN %s ON %s %s %s',
+            $this->formatIdentifier($table, 'join table'),
+            $this->formatIdentifier($first, 'join column'),
+            $this->validateOperator($operator),
+            $this->formatIdentifier($second, 'join column')
+        );
         return $this;
     }
 
@@ -307,7 +341,13 @@ class QueryBuilder
      */
     public function leftJoin(string $table, string $first, string $operator, string $second): self
     {
-        $this->joins[] = " LEFT JOIN $table ON $first $operator $second";
+        $this->joins[] = sprintf(
+            ' LEFT JOIN %s ON %s %s %s',
+            $this->formatIdentifier($table, 'join table'),
+            $this->formatIdentifier($first, 'join column'),
+            $this->validateOperator($operator),
+            $this->formatIdentifier($second, 'join column')
+        );
         return $this;
     }
 
@@ -322,7 +362,13 @@ class QueryBuilder
      */
     public function rightJoin(string $table, string $first, string $operator, string $second): self
     {
-        $this->joins[] = " RIGHT JOIN $table ON $first $operator $second";
+        $this->joins[] = sprintf(
+            ' RIGHT JOIN %s ON %s %s %s',
+            $this->formatIdentifier($table, 'join table'),
+            $this->formatIdentifier($first, 'join column'),
+            $this->validateOperator($operator),
+            $this->formatIdentifier($second, 'join column')
+        );
         return $this;
     }
 
@@ -349,7 +395,11 @@ class QueryBuilder
      */
     public function orderBy(string $column, string $direction = 'asc'): self
     {
-        $this->orders[] = "$column " . strtoupper($direction);
+        $this->orders[] = sprintf(
+            '%s %s',
+            $this->formatIdentifier($column, 'order column'),
+            $this->formatDirection($direction)
+        );
         return $this;
     }
 
@@ -631,7 +681,12 @@ class QueryBuilder
      */
     public function increment(string $column, int $amount = 1): int
     {
-        return $this->update([$column => $this->connection->getPdo()->quote("$column + $amount")]);
+        $col = $this->formatIdentifier($column, 'update column');
+        $sql = 'UPDATE ' . $this->formatIdentifier($this->table, 'table')
+            . ' SET ' . $col . ' = ' . $col . ' + ?'
+            . $this->compileWhereClause();
+        $bindings = array_merge([$amount], $this->bindings);
+        return $this->connection->update($sql, $bindings);
     }
 
     /**
@@ -643,7 +698,12 @@ class QueryBuilder
      */
     public function decrement(string $column, int $amount = 1): int
     {
-        return $this->update([$column => $this->connection->getPdo()->quote("$column - $amount")]);
+        $col = $this->formatIdentifier($column, 'update column');
+        $sql = 'UPDATE ' . $this->formatIdentifier($this->table, 'table')
+            . ' SET ' . $col . ' = ' . $col . ' - ?'
+            . $this->compileWhereClause();
+        $bindings = array_merge([$amount], $this->bindings);
+        return $this->connection->update($sql, $bindings);
     }
 
     /**
@@ -664,7 +724,7 @@ class QueryBuilder
      */
     public function truncate(): void
     {
-        $sql = "TRUNCATE TABLE " . $this->table;
+        $sql = "TRUNCATE TABLE " . $this->formatIdentifier($this->table, 'table');
         $this->connection->statement($sql);
     }
 
@@ -676,5 +736,72 @@ class QueryBuilder
     public function toSql(): string
     {
         return $this->grammar->compileSelect($this);
+    }
+
+    /**
+     * Validate and normalize SQL direction keyword.
+     */
+    protected function formatDirection(string $direction): string
+    {
+        $direction = strtolower(trim($direction));
+        if (!in_array($direction, ['asc', 'desc'], true)) {
+            throw new \InvalidArgumentException("Invalid order direction: {$direction}");
+        }
+
+        return strtoupper($direction);
+    }
+
+    /**
+     * Validate supported SQL comparison operators.
+     */
+    protected function validateOperator(string $operator): string
+    {
+        $operator = trim($operator);
+        $allowed = ['=', '!=', '<>', '<', '>', '<=', '>='];
+
+        if (!in_array($operator, $allowed, true)) {
+            throw new \InvalidArgumentException("Invalid SQL operator: {$operator}");
+        }
+
+        return $operator;
+    }
+
+    /**
+     * Ensure an identifier (table or column) only contains safe characters.
+     */
+    protected function formatIdentifier(string $identifier, string $context): string
+    {
+        $identifier = trim($identifier);
+
+        // Support identifier aliases via "AS" or space
+        if (stripos($identifier, ' as ') !== false) {
+            [$root, $alias] = preg_split('/\s+as\s+/i', $identifier);
+            return sprintf(
+                '%s AS %s',
+                $this->formatIdentifier($root, $context),
+                $this->formatIdentifier($alias, "{$context} alias")
+            );
+        }
+
+        if (preg_match('/\s+/', $identifier)) {
+            $parts = preg_split('/\s+/', $identifier);
+            if (count($parts) === 2) {
+                return sprintf(
+                    '%s AS %s',
+                    $this->formatIdentifier($parts[0], $context),
+                    $this->formatIdentifier($parts[1], "{$context} alias")
+                );
+            }
+
+            throw new \InvalidArgumentException("Invalid {$context}: {$identifier}");
+        }
+
+        // Allow dot-separated segments (e.g. schema.table, table.column)
+        $pattern = '/^(?:[A-Za-z_][A-Za-z0-9_]*)(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/';
+        if (!preg_match($pattern, $identifier)) {
+            throw new \InvalidArgumentException("Invalid {$context}: {$identifier}");
+        }
+
+        return $identifier;
     }
 }

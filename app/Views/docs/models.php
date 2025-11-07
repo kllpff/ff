@@ -10,7 +10,7 @@
                 <h2 class="text-2xl font-bold mb-4">Creating Models</h2>
                 <pre class="code-block">namespace App\Models;
 
-use FF\Framework\Database\Model;
+use FF\Database\Model;
 
 class User extends Model
 {

@@ -22,7 +22,7 @@ cd ff
 composer install
 ```
 
-This installs only one dependency: `vlucas/phpdotenv` for environment variables.
+FF Framework has zero external dependencies - it's pure PHP!
 
 ## Step 3: Create Environment File
 

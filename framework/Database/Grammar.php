@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Database;
+namespace FF\Database;
 
 /**
  * Grammar - SQL Grammar Compiler
@@ -10,6 +10,111 @@ namespace FF\Framework\Database;
  */
 class Grammar
 {
+    /**
+     * Validate and normalize SQL identifiers (tables, columns, qualified names).
+     * Mirrors SchemaBuilder::formatIdentifier for consistency.
+     */
+    protected function formatIdentifier(string $identifier, string $context): string
+    {
+        $identifier = trim($identifier);
+
+        // Support identifier aliases via "AS" or space
+        if (stripos($identifier, ' as ') !== false) {
+            [$root, $alias] = preg_split('/\s+as\s+/i', $identifier);
+            return sprintf(
+                '%s AS %s',
+                $this->formatIdentifier($root, $context),
+                $this->formatIdentifier($alias, "$context alias")
+            );
+        }
+
+        if (preg_match('/\s+/', $identifier)) {
+            $parts = preg_split('/\s+/', $identifier);
+            if (count($parts) === 2) {
+                return sprintf(
+                    '%s AS %s',
+                    $this->formatIdentifier($parts[0], $context),
+                    $this->formatIdentifier($parts[1], "$context alias")
+                );
+            }
+
+            throw new \InvalidArgumentException("Invalid {$context}: {$identifier}");
+        }
+
+        // Allow dot-separated segments (e.g. schema.table, table.column)
+        $pattern = '/^(?:[A-Za-z_][A-Za-z0-9_]*)(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/';
+        if (!preg_match($pattern, $identifier)) {
+            throw new \InvalidArgumentException("Invalid {$context}: {$identifier}");
+        }
+
+        return $identifier;
+    }
+
+    /**
+     * Validate SELECT column identifier, allowing wildcard "*" and "table.*".
+     */
+    protected function formatSelectIdentifier(string $identifier): string
+    {
+        $identifier = trim($identifier);
+
+        if ($identifier === '*') {
+            return '*';
+        }
+
+        // Allow qualified wildcard: table.*
+        if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*\.\*$/', $identifier)) {
+            return $identifier;
+        }
+
+        // Fallback to standard identifier validation (supports aliases)
+        return $this->formatIdentifier($identifier, 'column');
+    }
+
+    /**
+     * Sanitize a single SELECT expression (identifier, alias, or aggregate).
+     */
+    protected function sanitizeSelectExpression(string $expr): string
+    {
+        $expr = trim($expr);
+
+        // Handle aggregates: COUNT, SUM, AVG, MIN, MAX
+        if (preg_match('/^(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(.*?)\s*\)\s*(?:AS\s+([A-Za-z_][A-Za-z0-9_]*))?$/i', $expr, $m)) {
+            $func = strtoupper($m[1]);
+            $inner = $m[2];
+            $alias = $m[3] ?? null;
+
+            if ($func === 'COUNT') {
+                $innerSafe = $this->formatSelectIdentifier($inner);
+            } else {
+                // Strict: aggregates on identifiers only (no *)
+                $innerSafe = $this->formatIdentifier($inner, 'column');
+            }
+
+            $out = sprintf('%s(%s)', $func, $innerSafe);
+            if ($alias !== null) {
+                $out .= ' AS ' . $this->formatIdentifier($alias, 'column alias');
+            }
+            return $out;
+        }
+
+        // Handle aliases without aggregate: "col AS alias" or "col alias"
+        if (stripos($expr, ' as ') !== false) {
+            [$root, $alias] = preg_split('/\s+as\s+/i', $expr);
+            return sprintf('%s AS %s', $this->formatSelectIdentifier($root), $this->formatIdentifier($alias, 'column alias'));
+        }
+
+        if (preg_match('/\s+/', $expr)) {
+            $parts = preg_split('/\s+/', $expr);
+            if (count($parts) === 2) {
+                return sprintf('%s AS %s', $this->formatSelectIdentifier($parts[0]), $this->formatIdentifier($parts[1], 'column alias'));
+            }
+            throw new \InvalidArgumentException("Invalid select expression: {$expr}");
+        }
+
+        // Identifier or wildcard
+        return $this->formatSelectIdentifier($expr);
+    }
+
     /**
      * Compile a SELECT statement
      * 
@@ -25,9 +130,10 @@ class Grammar
         }
 
         $columns = $query->selects ?: ['*'];
-        $sql .= implode(', ', $columns);
+        $safeColumns = array_map([$this, 'sanitizeSelectExpression'], $columns);
+        $sql .= implode(', ', $safeColumns);
 
-        $sql .= ' FROM ' . $query->table;
+        $sql .= ' FROM ' . $this->formatIdentifier($query->table, 'table');
 
         if (!empty($query->joins)) {
             foreach ($query->joins as $join) {
@@ -36,7 +142,7 @@ class Grammar
         }
 
         if (!empty($query->wheres)) {
-            $sql .= ' WHERE ' . implode(' AND ', $query->wheres);
+            $sql .= $this->compileWhereClause($query->wheres);
         }
 
         if (!empty($query->orders)) {
@@ -44,14 +150,29 @@ class Grammar
         }
 
         if ($query->limit !== null) {
-            $sql .= ' LIMIT ' . $query->limit;
+            $sql .= ' LIMIT ' . (int)$query->limit;
         }
 
         if ($query->offset !== null) {
-            $sql .= ' OFFSET ' . $query->offset;
+            $sql .= ' OFFSET ' . (int)$query->offset;
         }
 
         return $sql;
+    }
+
+    /**
+     * Compile WHERE clause with proper AND/OR connectors
+     *
+     * @param array $wheres Items of ['connector' => 'AND'|'OR', 'sql' => string]
+     */
+    protected function compileWhereClause(array $wheres): string
+    {
+        $out = '';
+        foreach ($wheres as $i => $w) {
+            $connector = $i === 0 ? '' : (' ' . (($w['connector'] ?? 'AND')) . ' ');
+            $out .= $connector . ($w['sql'] ?? (string)$w);
+        }
+        return ' WHERE ' . $out;
     }
 
     /**
@@ -63,10 +184,12 @@ class Grammar
      */
     public function compileInsert(QueryBuilder $query, array $values): string
     {
-        $columns = array_keys($values);
+        $columns = array_map(function ($c) {
+            return $this->formatIdentifier((string)$c, 'column');
+        }, array_keys($values));
         $placeholders = array_fill(0, count($columns), '?');
 
-        $sql = 'INSERT INTO ' . $query->table;
+        $sql = 'INSERT INTO ' . $this->formatIdentifier($query->table, 'table');
         $sql .= ' (' . implode(', ', $columns) . ')';
         $sql .= ' VALUES (' . implode(', ', $placeholders) . ')';
 
@@ -84,14 +207,14 @@ class Grammar
     {
         $updates = [];
         foreach (array_keys($values) as $column) {
-            $updates[] = $column . ' = ?';
+            $updates[] = $this->formatIdentifier((string)$column, 'column') . ' = ?';
         }
 
-        $sql = 'UPDATE ' . $query->table;
+        $sql = 'UPDATE ' . $this->formatIdentifier($query->table, 'table');
         $sql .= ' SET ' . implode(', ', $updates);
 
         if (!empty($query->wheres)) {
-            $sql .= ' WHERE ' . implode(' AND ', $query->wheres);
+            $sql .= $this->compileWhereClause($query->wheres);
         }
 
         return $sql;
@@ -105,10 +228,10 @@ class Grammar
      */
     public function compileDelete(QueryBuilder $query): string
     {
-        $sql = 'DELETE FROM ' . $query->table;
+        $sql = 'DELETE FROM ' . $this->formatIdentifier($query->table, 'table');
 
         if (!empty($query->wheres)) {
-            $sql .= ' WHERE ' . implode(' AND ', $query->wheres);
+            $sql .= $this->compileWhereClause($query->wheres);
         }
 
         return $sql;
@@ -123,7 +246,9 @@ class Grammar
      */
     public function compileCount(QueryBuilder $query, string $column = '*'): string
     {
-        $query->selects = ["COUNT($column) as aggregate"];
+        // COUNT allows * and table.*
+        $safe = $this->formatSelectIdentifier($column);
+        $query->selects = ["COUNT($safe) as aggregate"];
         return $this->compileSelect($query);
     }
 
@@ -136,7 +261,8 @@ class Grammar
      */
     public function compileMax(QueryBuilder $query, string $column): string
     {
-        $query->selects = ["MAX($column) as aggregate"];
+        $safe = $this->formatIdentifier($column, 'column');
+        $query->selects = ["MAX($safe) as aggregate"];
         return $this->compileSelect($query);
     }
 
@@ -149,7 +275,8 @@ class Grammar
      */
     public function compileMin(QueryBuilder $query, string $column): string
     {
-        $query->selects = ["MIN($column) as aggregate"];
+        $safe = $this->formatIdentifier($column, 'column');
+        $query->selects = ["MIN($safe) as aggregate"];
         return $this->compileSelect($query);
     }
 
@@ -162,7 +289,8 @@ class Grammar
      */
     public function compileAvg(QueryBuilder $query, string $column): string
     {
-        $query->selects = ["AVG($column) as aggregate"];
+        $safe = $this->formatIdentifier($column, 'column');
+        $query->selects = ["AVG($safe) as aggregate"];
         return $this->compileSelect($query);
     }
 
@@ -175,7 +303,8 @@ class Grammar
      */
     public function compileSum(QueryBuilder $query, string $column): string
     {
-        $query->selects = ["SUM($column) as aggregate"];
+        $safe = $this->formatIdentifier($column, 'column');
+        $query->selects = ["SUM($safe) as aggregate"];
         return $this->compileSelect($query);
     }
 }

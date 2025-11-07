@@ -2,14 +2,17 @@
 
 namespace App\Controllers;
 
+use App\Events\PostCreated;
+use App\Events\PostDeleted;
+use App\Events\PostUpdated;
 use App\Models\Post;
 use App\Models\Category;
-use FF\Framework\Http\Request;
-use FF\Framework\Http\Response;
-use FF\Framework\Validation\Validator;
-use FF\Framework\Events\EventDispatcher;
-use FF\Framework\Log\Logger;
-use FF\Framework\Cache\Cache;
+use FF\Http\Request;
+use FF\Http\Response;
+use FF\Validation\Validator;
+use FF\Events\EventDispatcher;
+use FF\Log\Logger;
+use FF\Cache\Cache;
 
 /**
  * PostController
@@ -61,6 +64,10 @@ class PostController
      */
     public function index(): Response
     {
+        if ($redirect = $this->ensureAuthenticated()) {
+            return $redirect;
+        }
+
         $userId = session('auth_user_id');
 
         $this->logger->debug('Loading user posts', ['user_id' => $userId]);
@@ -90,6 +97,10 @@ class PostController
      */
     public function create(): Response
     {
+        if ($redirect = $this->ensureAuthenticated()) {
+            return $redirect;
+        }
+
         // Get all categories
         $categories = Category::all();
 
@@ -111,6 +122,10 @@ class PostController
      */
     public function store(Request $request): Response
     {
+        if ($redirect = $this->ensureAuthenticated()) {
+            return $redirect;
+        }
+
         $userId = session('auth_user_id');
 
         $this->logger->info('Creating new post', ['user_id' => $userId]);
@@ -180,7 +195,7 @@ class PostController
         }
 
         // Dispatch PostCreated event
-        $this->dispatcher->dispatch('post.created', $post);
+        $this->dispatcher->dispatch(new PostCreated($post));
 
         session()->flash('success', 'Post created successfully!');
         return redirect('/dashboard/posts');
@@ -195,6 +210,10 @@ class PostController
      */
     public function edit(Request $request, int $id): Response
     {
+        if ($redirect = $this->ensureAuthenticated()) {
+            return $redirect;
+        }
+
         $userId = session('auth_user_id');
 
         // Find post
@@ -228,6 +247,10 @@ class PostController
      */
     public function update(Request $request, int $id): Response
     {
+        if ($redirect = $this->ensureAuthenticated()) {
+            return $redirect;
+        }
+
         $userId = session('auth_user_id');
 
         $this->logger->info('Updating post', ['post_id' => $id, 'user_id' => $userId]);
@@ -318,7 +341,7 @@ class PostController
         }
 
         // Dispatch PostUpdated event
-        $this->dispatcher->dispatch('post.updated', $post);
+        $this->dispatcher->dispatch(new PostUpdated($post));
 
         session()->flash('success', 'Post updated successfully!');
         return redirect('/dashboard/posts');
@@ -335,6 +358,10 @@ class PostController
      */
     public function destroy(Request $request, int $id): Response
     {
+        if ($redirect = $this->ensureAuthenticated()) {
+            return $redirect;
+        }
+
         $userId = session('auth_user_id');
 
         $this->logger->info('Deleting post', ['post_id' => $id, 'user_id' => $userId]);
@@ -355,7 +382,7 @@ class PostController
         $wasPublished = $post->status === 'published';
 
         // Dispatch PostDeleted event before deletion
-        $this->dispatcher->dispatch('post.deleted', $post);
+        $this->dispatcher->dispatch(new PostDeleted($post));
 
         // Delete post
         $post->delete();
@@ -374,5 +401,18 @@ class PostController
 
         session()->flash('success', 'Post deleted successfully!');
         return redirect('/dashboard/posts');
+    }
+
+    /**
+     * Ensure the session holds an authenticated user ID.
+     */
+    protected function ensureAuthenticated(): ?Response
+    {
+        if (!session('auth_user_id')) {
+            session()->flash('error', 'Please log in to continue.');
+            return redirect('/login');
+        }
+
+        return null;
     }
 }

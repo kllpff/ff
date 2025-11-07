@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Database;
+namespace FF\Database;
 
 /**
  * Migrator - Database Migration Manager
@@ -37,9 +37,16 @@ class Migrator
         $class = $this->getMigrationClass($path);
 
         if (class_exists($class)) {
-            $migration = new $class();
-            $migration->up();
-            $this->recordMigration(basename($path, '.php'));
+            $this->connection->beginTransaction();
+            try {
+                $migration = new $class();
+                $migration->up();
+                $this->recordMigration(basename($path, '.php'));
+                $this->connection->commit();
+            } catch (\Exception $e) {
+                $this->connection->rollback();
+                throw $e;
+            }
         }
     }
 
@@ -66,9 +73,16 @@ class Migrator
             $class = $this->getMigrationClass($path);
 
             if (class_exists($class)) {
-                $instance = new $class();
-                $instance->down();
-                $this->forgetMigration($migration);
+                $this->connection->beginTransaction();
+                try {
+                    $instance = new $class();
+                    $instance->down();
+                    $this->forgetMigration($migration);
+                    $this->connection->commit();
+                } catch (\Exception $e) {
+                    $this->connection->rollback();
+                    throw $e;
+                }
             }
         }
     }
@@ -109,7 +123,8 @@ class Migrator
      */
     protected function getRanMigrations(): array
     {
-        $result = $this->connection->query("SELECT migration FROM migrations ORDER BY batch ASC");
+        $qb = new QueryBuilder($this->connection);
+        $result = $qb->table('migrations')->select(['migration'])->orderBy('batch', 'asc')->get();
         return array_column($result, 'migration');
     }
 
@@ -119,7 +134,8 @@ class Migrator
     protected function recordMigration(string $migration): void
     {
         $batch = $this->getNextBatchNumber();
-        $this->connection->insert('migrations', [
+        $qb = new QueryBuilder($this->connection);
+        $qb->table('migrations')->insert([
             'migration' => $migration,
             'batch' => $batch,
             'executed_at' => date('Y-m-d H:i:s')
@@ -131,7 +147,8 @@ class Migrator
      */
     protected function forgetMigration(string $migration): void
     {
-        $this->connection->delete('migrations', ['migration' => $migration]);
+        $qb = new QueryBuilder($this->connection);
+        $qb->table('migrations')->where('migration', $migration)->delete();
     }
 
     /**
@@ -139,7 +156,8 @@ class Migrator
      */
     protected function getNextBatchNumber(): int
     {
-        $result = $this->connection->query("SELECT MAX(batch) as max_batch FROM migrations");
+        $qb = new QueryBuilder($this->connection);
+        $result = $qb->table('migrations')->select(['MAX(batch) as max_batch'])->get();
         return ($result[0]['max_batch'] ?? 0) + 1;
     }
 
@@ -151,7 +169,10 @@ class Migrator
         $schema = new SchemaBuilder($this->connection);
 
         try {
-            $this->connection->query("SELECT 1 FROM migrations LIMIT 1");
+            (new QueryBuilder($this->connection))
+                ->table('migrations')
+                ->limit(1)
+                ->get();
         } catch (\Exception $e) {
             $schema->create('migrations', function($table) {
                 $table->increments('id');

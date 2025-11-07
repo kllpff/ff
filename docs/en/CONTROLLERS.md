@@ -13,7 +13,7 @@ Controllers are in `app/Controllers/`:
 namespace App\Controllers;
 
 use App\Models\User;
-use FF\Framework\Http\Request;
+use FF\Http\Request;
 
 class UserController
 {
@@ -89,8 +89,8 @@ Inject services into controller methods:
 
 namespace App\Controllers;
 
-use FF\Framework\Cache\Cache;
-use FF\Framework\Log\Logger;
+use FF\Cache\Cache;
+use FF\Log\Logger;
 use App\Models\Post;
 
 class PostController
@@ -142,7 +142,7 @@ public function store(Request $request)
     
     // Check for AJAX
     if ($request->isAjax()) {
-        return json_encode(['status' => 'ok']);
+        return response()->json(['status' => 'ok']);
     }
 }
 ```

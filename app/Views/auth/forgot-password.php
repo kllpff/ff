@@ -8,6 +8,7 @@
                 <p class="text-secondary mb-6">Enter your email address and we'll send you a password reset link.</p>
 
                 <form method="POST" action="/forgot-password">
+                    <?php echo csrf_field(); ?>
                     <div class="form-group">
                         <label for="email" class="form-label">Email</label>
                         <input type="email" id="email" name="email" class="form-input" required>

@@ -1,6 +1,6 @@
 <?php
 
-namespace FF\Framework\Console;
+namespace FF\Console;
 
 /**
  * Command - Base CLI Command Class

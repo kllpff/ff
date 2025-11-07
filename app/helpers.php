@@ -1,5 +1,7 @@
 <?php
 
+use FF\View\HtmlValue;
+
 /**
  * Application Helper Functions
  * 
@@ -19,6 +21,11 @@ function h($string = '', $flags = ENT_QUOTES, $encoding = 'UTF-8'): string
     if ($string === null) {
         return '';
     }
+
+    if ($string instanceof HtmlValue) {
+        return $string->escape($flags, $encoding);
+    }
+
     return htmlspecialchars((string)$string, $flags, $encoding);
 }
 
@@ -56,4 +63,15 @@ function arrayToObject(array $array): object
 function objectToArray($object): array
 {
     return json_decode(json_encode($object), true);
+}
+
+/**
+ * Mark a string as safe HTML for view rendering.
+ *
+ * @param string $value
+ * @return HtmlValue
+ */
+function raw_html(string $value): HtmlValue
+{
+    return HtmlValue::raw($value);
 }

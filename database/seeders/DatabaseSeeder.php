@@ -1,8 +1,8 @@
 <?php
 
-use FF\Framework\Database\Seeder;
-use FF\Framework\Database\Connection;
-use FF\Framework\Security\Hash;
+use FF\Database\Seeder;
+use FF\Database\Connection;
+use FF\Security\Hash;
 
 class DatabaseSeeder extends Seeder
 {

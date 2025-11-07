@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use FF\Framework\Database\Model;
+use FF\Database\Model;
 
 /**
  * User Model
@@ -26,11 +26,23 @@ class User extends Model
     protected array $fillable = [
         'name',
         'email',
-        'password',
+        'password'
+    ];
+
+    /**
+     * Guarded attributes that cannot be mass assigned
+     *
+     * @var array
+     */
+    protected array $guarded = [
+        'id',
         'email_verified_at',
         'verification_token',
         'reset_token',
-        'reset_token_expires'
+        'reset_token_expires',
+        'remember_token',
+        'created_at',
+        'updated_at'
     ];
 
     /**
@@ -41,7 +53,8 @@ class User extends Model
     protected array $hidden = [
         'password',
         'verification_token',
-        'reset_token'
+        'reset_token',
+        'remember_token'
     ];
 
     /**
@@ -117,7 +130,7 @@ class User extends Model
     /**
      * Get user's posts relationship
      * 
-     * @return \FF\Framework\Database\QueryBuilder
+     * @return \FF\Database\QueryBuilder
      */
     public function posts()
     {

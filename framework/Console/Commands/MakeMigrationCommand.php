@@ -1,29 +1,38 @@
 <?php
 
-namespace FF\Framework\Console\Commands;
+namespace FF\Console\Commands;
 
-use FF\Framework\Console\Command;
+use FF\Console\Command;
+use FF\Console\Concerns\SanitizesGeneratorInput;
 
 /**
  * MakeMigrationCommand - Generate a new migration file
  */
 class MakeMigrationCommand extends Command
 {
+    use SanitizesGeneratorInput;
+
     protected string $name = 'make:migration';
     protected string $description = 'Create a new migration file';
 
     public function handle(): int
     {
-        $name = $this->argument('name') ?? $this->prompt('Migration name: ');
+        $rawName = $this->readGeneratorArgument() ?? $this->prompt('Migration name (e.g. create_users_table): ');
+        $name = $this->sanitizeFileName($rawName);
 
         if (!$name) {
-            $this->error('Migration name is required');
+            $this->error('Migration name is required and may only contain letters, numbers, underscores, and dashes.');
             return 1;
         }
 
         $timestamp = date('Y_m_d_His');
         $filename = "{$timestamp}_{$name}.php";
-        $path = base_path("database/migrations/$filename");
+        $path = base_path("database/migrations/{$filename}");
+
+        if (file_exists($path)) {
+            $this->error("Migration {$filename} already exists");
+            return 1;
+        }
 
         @mkdir(dirname($path), 0755, true);
 
@@ -35,7 +44,7 @@ class MakeMigrationCommand extends Command
 
 namespace $namespace;
 
-use FF\Framework\Database\Migration;
+use FF\Database\Migration;
 
 class $class extends Migration
 {
@@ -56,28 +65,14 @@ PHP;
 
         file_put_contents($path, $stub);
 
-        $this->info("Migration $filename created successfully!");
+        $this->info("Migration {$filename} created successfully!");
         return 0;
-    }
-
-    protected function prompt(string $message): ?string
-    {
-        echo $message;
-        return trim(fgets(STDIN));
-    }
-
-    protected function argument(string $name): ?string
-    {
-        foreach ($_SERVER['argv'] as $key => $arg) {
-            if ($arg === 'make:migration' && isset($_SERVER['argv'][$key + 1])) {
-                return $_SERVER['argv'][$key + 1];
-            }
-        }
-        return null;
     }
 
     protected function studlyCase(string $value): string
     {
-        return str_replace(' ', '', ucwords(str_replace('_', ' ', str_replace('-', ' ', $value))));
+        $normalized = str_replace('-', '_', $value);
+
+        return str_replace(' ', '', ucwords(str_replace('_', ' ', $normalized)));
     }
 }
