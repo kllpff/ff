@@ -12,7 +12,8 @@ Built with production-ready features including:
 - 🚀 **Lightning-Fast Performance** - Optimized for speed with minimal overhead
 - 🔒 **Enterprise Security** - CSRF, XSS, encryption, and rate limiting built-in
 - 🎯 **Clean Architecture** - MVC pattern with Web/API separation
-- 💪 **Powerful ORM** - Active Record pattern with QueryBuilder
+- 💪 **Powerful ORM** - Active Record pattern with QueryBuilder and Pagination
+- 🔍 **Smart Search & Filters** - Built-in search and filtering system for admin panels
 - ⚡ **Modern PHP 8.1+** - Constructor promotion, typed properties, named arguments
 - 📦 **Zero Dependencies** - Pure PHP, no external libraries required
 - 🧪 **100% Testable** - Full test coverage with example tests
@@ -135,6 +136,32 @@ sudo nginx -t
 # Restart Nginx
 sudo systemctl restart nginx
 ```
+
+### Trusted Proxy Configuration (Important!)
+
+If your application is behind a reverse proxy (nginx, Cloudflare, AWS ALB, etc.), **you must configure trusted proxies** for proper functionality:
+
+```bash
+# Option 1: Configure in .env file
+TRUSTED_PROXIES=192.168.1.1,10.0.0.0/8  # Add your proxy IPs
+
+# Option 2: Configure in config/app.php
+'trusted_proxies' => [
+    '192.168.1.1',
+    '10.0.0.0/8',
+    '172.16.0.0/12',
+    '192.168.0.0/16'
+],
+```
+
+**⚠️ Security Warning**: Never use `TRUSTED_PROXIES=*` in production! Always specify exact IP addresses or networks.
+
+**Why this matters:**
+- Correct client IP detection for rate limiting and logging
+- Proper URL generation in emails and redirects
+- Security features work correctly behind proxy
+
+See `TRUSTED_PROXIES.md` for detailed configuration examples for popular services (Cloudflare, AWS ALB, Docker, etc.).
 
 ### Apache Configuration
 
@@ -464,7 +491,7 @@ $router->group(['prefix' => 'admin', 'middleware' => 'auth'], function($r) {
 ```
 
 ### 3. ORM with QueryBuilder
-Active Record pattern, mass assignment, relationships, transactions.
+Active Record pattern, mass assignment, relationships, transactions, pagination.
 
 ```php
 // Create
@@ -475,6 +502,18 @@ $users = User::where('active', true)
     ->orderBy('created_at', 'desc')
     ->limit(10)
     ->get();
+
+// Pagination (NEW)
+$posts = Post::query()
+    ->orderBy('created_at', 'DESC')
+    ->paginate(20); // 20 items per page
+
+// In views, use paginator methods
+foreach ($posts->items() as $post) {
+    // Display post
+}
+echo $posts->links(); // Render pagination links
+echo $posts->info();  // "Showing 1 to 20 of 100 items"
 
 // Update
 $user->update(['status' => 'verified']);
@@ -495,6 +534,7 @@ $user = User::transaction(function() {
 - **XSS Prevention** - Input sanitization and output escaping
 - **Rate Limiting** - Brute force attack prevention
 - **Input Validation** - 12+ built-in validation rules
+- **Content Security Policy (CSP)** - XSS protection headers (configurable, see [CSP_CONFIG.md](docs/CSP_CONFIG.md))
 
 ```php
 // Password hashing
@@ -560,18 +600,32 @@ $validated = Validator::make($data, [
 ```
 
 ### 7. Template Engine
-PHP-based views with variable sharing.
+PHP-based views with flexible layout system.
 
 ```php
-// Render view
+// Render view with default layout
 return view('users/index', ['users' => $users]);
 
-// Share data globally
-View::share('appName', 'My App');
+// Use custom layout
+return view('home', [
+    '__layout' => 'main',
+    'title' => 'Home'
+]);
 
-// Include subview
-view('components/header', ['title' => 'Welcome']);
+// Use admin layout
+return view('admin/dashboard', [
+    '__layout' => 'admin/layouts/app',
+    'stats' => $stats
+]);
+
+// No layout
+return view('api/data', [
+    '__layout' => null,
+    'data' => $data
+]);
 ```
+
+See [Views Documentation](docs/en/VIEWS.md) for more details.
 
 ### 8. Caching System
 File and array drivers with TTL.
@@ -1099,6 +1153,7 @@ ff-framework/
 │   ├── Log/                # Logging
 │   ├── Debug/              # Error handling
 │   ├── Events/             # Event system
+│   ├── Pagination/         # Pagination system
 │   ├── Assets/             # Asset management
 │   └── Support/            # Utilities
 ├── public/                 # Web root
@@ -1149,7 +1204,8 @@ FF Framework — это быстрый, безопасный и гибкий **P
 - 🚀 **Молниеносная производительность** - Оптимизирован на скорость с минимальными затратами
 - 🔒 **Корпоративная безопасность** - CSRF, XSS, шифрование и rate limiting встроены
 - 🎯 **Чистая архитектура** - MVC паттерн с внедрением зависимостей
-- 💪 **Мощный ORM** - Active Record паттерн с QueryBuilder
+- 💪 **Мощный ORM** - Active Record паттерн с QueryBuilder и пагинацией
+- 🔍 **Умный поиск и фильтры** - Встроенная система поиска и фильтрации для админ-панелей
 - ⚡ **Современный PHP 8.1+** - Constructor promotion, typed properties, named arguments
 - 📦 **Нулевые зависимости** - Чистый PHP, никаких внешних библиотек не требуется
 - 🧪 **100% тестируемость** - Полное покрытие тестами с примерами
@@ -1416,7 +1472,7 @@ $router->get('/users/{id}', 'UserController@show')->name('users.show');
 ```
 
 ### 3. ORM с QueryBuilder
-Active Record паттерн, массовое заполнение, отношения, транзакции.
+Active Record паттерн, массовое заполнение, отношения, транзакции, пагинация.
 
 ```php
 // Создание
@@ -1427,6 +1483,18 @@ $users = User::where('active', true)
     ->orderBy('created_at', 'desc')
     ->limit(10)
     ->get();
+
+// Пагинация (НОВОЕ)
+$posts = Post::query()
+    ->orderBy('created_at', 'DESC')
+    ->paginate(20); // 20 элементов на странице
+
+// В представлениях используйте методы paginator
+foreach ($posts->items() as $post) {
+    // Отображение поста
+}
+echo $posts->links(); // Рендер ссылок пагинации
+echo $posts->info();  // "Showing 1 to 20 of 100 items"
 
 // Обновление
 $user->update(['status' => 'verified']);
@@ -1465,8 +1533,9 @@ $request->validate([
 ]);
 
 // Шифрование данных
-$encrypted = encrypt('secret');
-$decrypted = decrypt($encrypted);
+$encryptor = app('encrypt');
+$encrypted = $encryptor->encrypt('secret');
+$decrypted = $encryptor->decrypt($encrypted);
 ```
 
 ### 5. Управление сессией
@@ -1678,6 +1747,7 @@ ff-framework/
 │   ├── Log/                # Логирование
 │   ├── Debug/              # Обработка ошибок
 │   ├── Events/             # Система событий
+│   ├── Pagination/         # Система пагинации
 │   ├── Assets/             # Управление ассетами
 │   └── Support/            # Утилиты
 ├── public/                 # Корень веба

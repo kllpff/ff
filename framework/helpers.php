@@ -347,24 +347,36 @@ if (!function_exists('view')) {
             $content = ob_get_clean();
 
             // Wrap with layout if exists
-            if (isset($__layout) && $__layout) {
-                $layoutPath = $resolve($realBase, 'layouts/' . $__layout, false);
+            if (isset($__layout) && $__layout !== false) {
+                // If layout contains '/', treat it as full path (e.g., 'admin/layouts/app')
+                // Otherwise, add 'layouts/' prefix (e.g., 'main' -> 'layouts/main')
+                $layoutName = str_contains($__layout, '/') ? $__layout : 'layouts/' . $__layout;
+                $layoutPath = $resolve($realBase, $layoutName, false);
                 if ($layoutPath) {
                     $__content = $content;
                     ob_start();
                     include $layoutPath;
                     $content = ob_get_clean();
                 }
-            } else {
-                // Default layout
-                $layoutPath = $resolve($realBase, 'layouts/app', false);
-                if ($layoutPath) {
-                    $__content = $content;
-                    ob_start();
-                    include $layoutPath;
-                    $content = ob_get_clean();
+            } elseif (!isset($__layout)) {
+                // Use default layout from config
+                $viewConfig = config('view');
+                $defaultLayout = $viewConfig['default_layout'] ?? 'app';
+
+                if ($defaultLayout) {
+                    // If layout contains '/', treat it as full path
+                    // Otherwise, add 'layouts/' prefix
+                    $layoutName = str_contains($defaultLayout, '/') ? $defaultLayout : 'layouts/' . $defaultLayout;
+                    $layoutPath = $resolve($realBase, $layoutName, false);
+                    if ($layoutPath) {
+                        $__content = $content;
+                        ob_start();
+                        include $layoutPath;
+                        $content = ob_get_clean();
+                    }
                 }
             }
+            // If $__layout === false or null, no layout is used
 
             return $content;
         } catch (\Exception $e) {
@@ -708,5 +720,19 @@ if (!function_exists('redirect')) {
         }
 
         return response()->redirect($url, $status);
+    }
+}
+
+/**
+ * Get old input value from previous request
+ *
+ * @param string $key
+ * @param mixed $default
+ * @return mixed
+ */
+if (!function_exists('old')) {
+    function old(string $key, $default = '')
+    {
+        return session()->get('old_input.' . $key, $default);
     }
 }

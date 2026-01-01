@@ -27,10 +27,14 @@ class SecurityHeadersMiddleware implements MiddlewareInterface
 
     /**
      * Content Security Policy definition.
+     * Set to null to disable CSP entirely.
+     *
+     * По умолчанию - безопасная конфигурация для production.
+     * Для development можно отключить через конфиг.
      *
      * @var string|null
      */
-    protected ?string $contentSecurityPolicy = "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'";
+    protected ?string $contentSecurityPolicy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'";
 
     /**
      * Handle an incoming request.
@@ -55,8 +59,12 @@ class SecurityHeadersMiddleware implements MiddlewareInterface
             }
         }
 
-        if ($this->contentSecurityPolicy && !array_key_exists('Content-Security-Policy', $existing)) {
-            $response->header('Content-Security-Policy', $this->contentSecurityPolicy);
+        // CSP можно отключить через конфиг для development
+        $cspEnabled = config('app.enable_csp', true);
+        $csp = $cspEnabled ? $this->contentSecurityPolicy : null;
+        
+        if ($csp && !array_key_exists('Content-Security-Policy', $existing)) {
+            $response->header('Content-Security-Policy', $csp);
         }
 
         if ($this->shouldAddStrictTransportSecurity()) {
@@ -75,7 +83,22 @@ class SecurityHeadersMiddleware implements MiddlewareInterface
             return true;
         }
 
-        $forwardedProto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? null;
-        return $forwardedProto === 'https';
+        // Only trust X-Forwarded-Proto from trusted proxies
+        $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '';
+        $trustedProxies = config('app.trusted_proxies', []);
+
+        $isTrustedProxy = false;
+        if ($trustedProxies === '*') {
+            $isTrustedProxy = true;
+        } elseif (is_array($trustedProxies) && in_array($remoteAddr, $trustedProxies, true)) {
+            $isTrustedProxy = true;
+        }
+
+        if ($isTrustedProxy) {
+            $forwardedProto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? null;
+            return $forwardedProto === 'https';
+        }
+
+        return false;
     }
 }

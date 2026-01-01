@@ -1,5 +1,3 @@
-<?php $__layout = 'main'; ?>
-
 <div class="section">
     <div class="container">
         <div class="flex items-center justify-between mb-8">

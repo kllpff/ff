@@ -12,12 +12,12 @@ return [
     'up' => function (SchemaBuilder $schema) {
         $schema->create('posts', function ($table) {
             $table->id();
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('category_id')->constrained('categories')->onDelete('cascade');
+            $table->integer('user_id');
+            $table->integer('category_id');
             $table->string('title', 255);
             $table->string('slug', 255)->unique();
             $table->text('content');
-            $table->enum('status', ['draft', 'published'])->default('draft');
+            $table->string('status', 20)->default('draft');
             $table->integer('views')->default(0);
             $table->timestamp('published_at')->nullable();
             $table->timestamps();

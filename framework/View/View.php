@@ -28,13 +28,6 @@ class View
     protected array $data = [];
 
     /**
-     * The cache directory
-     * 
-     * @var string
-     */
-    protected string $cacheDir;
-
-    /**
      * The container instance
      * 
      * @var Container
@@ -53,13 +46,11 @@ class View
      * 
      * @param Container $container The container
      * @param string $viewPath The base view path
-     * @param string $cacheDir The cache directory
      */
-    public function __construct(Container $container, string $viewPath, string $cacheDir = '')
+    public function __construct(Container $container, string $viewPath)
     {
         $this->container = $container;
         $this->path = $viewPath;
-        $this->cacheDir = $cacheDir ?: sys_get_temp_dir();
     }
 
     /**
@@ -76,7 +67,12 @@ class View
         $filePath = $this->resolveViewPath($view);
 
         // Extract variables for use in template (auto-escaped)
-        $variables = $this->prepareVariables(array_merge(static::$shared, $this->data));
+        $variables = $this->prepareVariables(array_merge(static::$shared, $this->data, $data));
+        
+        // Protect critical variables from being overwritten
+        $protected = ['this', 'app', 'filePath', 'view', '__DIR__', '__FILE__', '__LINE__', '__FUNCTION__', '__CLASS__', '__METHOD__', '__NAMESPACE__'];
+        $variables = array_diff_key($variables, array_flip($protected));
+        
         extract($variables, EXTR_SKIP);
 
         // Start output buffering and include the view
@@ -196,25 +192,7 @@ class View
         return $instance;
     }
 
-    /**
-     * Compile a view for caching
-     * 
-     * @param string $viewFile The view file path
-     * @return string The cache file path
-     */
-    public function compile(string $viewFile): string
-    {
-        $content = file_get_contents($viewFile);
-        
-        // Compile view syntax to PHP
-        // For now, just return original content
-        // Full template compilation will be in Stage 8.3
-        
-        $cacheFile = $this->cacheDir . '/' . hash('sha256', $viewFile) . '.php';
-        file_put_contents($cacheFile, $content);
-        
-        return $cacheFile;
-    }
+
 
     /**
      * Resolve a view path while preventing directory traversal.

@@ -26,7 +26,8 @@ class User extends Model
     protected array $fillable = [
         'name',
         'email',
-        'password'
+        'password',
+        'is_admin'
     ];
 
     /**
@@ -59,12 +60,22 @@ class User extends Model
 
     /**
      * Check if user's email is verified
-     * 
+     *
      * @return bool
      */
     public function isEmailVerified(): bool
     {
         return !empty($this->email_verified_at);
+    }
+
+    /**
+     * Check if user is admin
+     *
+     * @return bool
+     */
+    public function isAdmin(): bool
+    {
+        return (bool)$this->is_admin;
     }
 
     /**
@@ -74,8 +85,10 @@ class User extends Model
      */
     public function markEmailAsVerified(): bool
     {
-        $this->email_verified_at = date('Y-m-d H:i:s');
-        $this->verification_token = null;
+        $this->forceFill([
+            'email_verified_at' => date('Y-m-d H:i:s'),
+            'verification_token' => null,
+        ]);
         return $this->save();
     }
 
@@ -87,8 +100,10 @@ class User extends Model
     public function generatePasswordResetToken(): string
     {
         $token = bin2hex(random_bytes(32));
-        $this->reset_token = hash('sha256', $token);
-        $this->reset_token_expires = date('Y-m-d H:i:s', strtotime('+1 hour'));
+        $this->forceFill([
+            'reset_token' => hash('sha256', $token),
+            'reset_token_expires' => date('Y-m-d H:i:s', strtotime('+1 hour')),
+        ]);
         $this->save();
         
         return $token; // Return plain token for email
@@ -122,8 +137,10 @@ class User extends Model
      */
     public function clearPasswordResetToken(): bool
     {
-        $this->reset_token = null;
-        $this->reset_token_expires = null;
+        $this->forceFill([
+            'reset_token' => null,
+            'reset_token_expires' => null,
+        ]);
         return $this->save();
     }
 
@@ -134,6 +151,7 @@ class User extends Model
      */
     public function posts()
     {
-        return $this->hasMany(Post::class, 'user_id');
+        // Return a query builder for posts belonging to this user
+        return Post::where('user_id', '=', $this->getAttribute('id'));
     }
 }

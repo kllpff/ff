@@ -27,6 +27,11 @@ class Table
         return $this->name;
     }
 
+    public function id(string $column = 'id'): Column
+    {
+        return $this->bigIncrements($column);
+    }
+
     public function increments(string $column): Column
     {
         return $this->bigIncrements($column);
@@ -89,6 +94,12 @@ class Table
         return $this->addColumn('timestamp', $column);
     }
 
+    public function timestamps(): void
+    {
+        $this->timestamp('created_at')->nullable();
+        $this->timestamp('updated_at')->nullable();
+    }
+
     public function json(string $column): Column
     {
         return $this->addColumn('json', $column)->nullable();
@@ -101,6 +112,12 @@ class Table
 
     public function unique(string $name, array $columns): void
     {
+        $this->uniqueKeys[$name] = $columns;
+    }
+
+    public function addUniqueKey(array $columns): void
+    {
+        $name = implode('_', $columns) . '_unique';
         $this->uniqueKeys[$name] = $columns;
     }
 
@@ -122,7 +139,14 @@ class Table
     protected function addColumn(string $type, string $column): Column
     {
         $col = new Column($column, $type);
+        $col->setTable($this);
         $this->columns[] = $col;
+
+        // When modifying an existing table, record an ADD COLUMN command
+        if (!$this->creating) {
+            $this->commands[] = ['action' => 'add', 'column' => $col];
+        }
+
         return $col;
     }
 

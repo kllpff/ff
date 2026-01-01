@@ -34,19 +34,47 @@ class Migrator
      */
     protected function runMigration(string $path): void
     {
-        $class = $this->getMigrationClass($path);
-
-        if (class_exists($class)) {
+        // Begin transaction for safety, but don't force rollback if none active
+        try {
             $this->connection->beginTransaction();
-            try {
-                $migration = new $class();
-                $migration->up();
-                $this->recordMigration(basename($path, '.php'));
-                $this->connection->commit();
-            } catch (\Exception $e) {
-                $this->connection->rollback();
-                throw $e;
+        } catch (\Exception $e) {
+            // Some drivers don't support DDL transactions; proceed without blocking
+        }
+
+        try {
+            // Try to load migration as array format (return ['up' => closure, 'down' => closure])
+            $migration = require $path;
+
+            if (is_array($migration) && isset($migration['up'])) {
+                // Array-based migration
+                $schema = new SchemaBuilder($this->connection);
+                $migration['up']($schema);
+            } else {
+                // Class-based migration
+                $class = $this->getMigrationClass($path);
+                if (class_exists($class)) {
+                    $instance = new $class();
+                    $instance->up();
+                }
             }
+
+            $this->recordMigration(basename($path, '.php'));
+            try {
+                if ($this->connection->getPdo()->inTransaction()) {
+                    $this->connection->commit();
+                }
+            } catch (\Exception $e) {
+                // If commit fails or no transaction, ignore for DDL
+            }
+        } catch (\Exception $e) {
+            try {
+                if ($this->connection->getPdo()->inTransaction()) {
+                    $this->connection->rollback();
+                }
+            } catch (\Exception $rollbackError) {
+                // Ignore rollback errors when no active transaction
+            }
+            throw $e;
         }
     }
 
@@ -70,19 +98,29 @@ class Migrator
         $path = $this->findMigrationPath($migration);
 
         if ($path && file_exists($path)) {
-            $class = $this->getMigrationClass($path);
+            $this->connection->beginTransaction();
+            try {
+                // Try to load migration as array format
+                $migrationData = require $path;
 
-            if (class_exists($class)) {
-                $this->connection->beginTransaction();
-                try {
-                    $instance = new $class();
-                    $instance->down();
-                    $this->forgetMigration($migration);
-                    $this->connection->commit();
-                } catch (\Exception $e) {
-                    $this->connection->rollback();
-                    throw $e;
+                if (is_array($migrationData) && isset($migrationData['down'])) {
+                    // Array-based migration
+                    $schema = new SchemaBuilder($this->connection);
+                    $migrationData['down']($schema);
+                } else {
+                    // Class-based migration
+                    $class = $this->getMigrationClass($path);
+                    if (class_exists($class)) {
+                        $instance = new $class();
+                        $instance->down();
+                    }
                 }
+
+                $this->forgetMigration($migration);
+                $this->connection->commit();
+            } catch (\Exception $e) {
+                $this->connection->rollback();
+                throw $e;
             }
         }
     }

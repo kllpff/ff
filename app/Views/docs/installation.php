@@ -1,5 +1,3 @@
-<?php $__layout = 'main'; ?>
-
 <div class="section">
     <div class="container">
         <div class="max-w-4xl mx-auto">
@@ -28,8 +26,10 @@ cd ff-framework</pre>
                 <pre class="code-block">cp .env.example .env</pre>
 
                 <h3 class="text-xl font-semibold mb-3 mt-6">3. Database Setup</h3>
-                <pre class="code-block">php setup_db.php
-php seed_db.php</pre>
+                <pre class="code-block">php artisan migrate
+php artisan db:seed</pre>
+                <p class="text-secondary mt-2">Or execute:</p>
+                <pre class="code-block">php database/migrate.php</pre>
 
                 <h3 class="text-xl font-semibold mb-3 mt-6">4. Web Server Configuration</h3>
                 <p class="text-secondary mb-3">Point your web server document root to <code class="code-inline">public/</code> directory.</p>

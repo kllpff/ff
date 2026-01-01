@@ -29,8 +29,13 @@ class Post extends Model
         'title',
         'slug',
         'content',
+        'excerpt',
+        'meta_title',
+        'meta_description',
+        'meta_keywords',
         'status',
-        'views'
+        'views',
+        'published_at'
     ];
 
     /**

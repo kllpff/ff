@@ -40,6 +40,7 @@ class DashboardController
                           ->count();
 
         $content = view('dashboard/index', [
+            '__layout' => 'admin/layouts/app',
             'title' => 'Dashboard - FF Framework',
             'user' => $user,
             'postsCount' => $postsCount,

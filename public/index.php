@@ -38,6 +38,18 @@ $app->bootstrap([
     // App\Providers\RouterServiceProvider::class,
 ]);
 
+// Start session BEFORE any middleware
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.cookie_domain', ''); // Empty = current domain
+    ini_set('session.cookie_path', '/');
+    ini_set('session.cookie_httponly', '1');
+    ini_set('session.cookie_samesite', 'Lax');
+    ini_set('session.cookie_secure', '0'); // 0 = works with HTTP
+    ini_set('session.use_strict_mode', '1');
+
+    session_start();
+}
+
 // Create the HTTP Kernel
 $kernel = new FF\Core\Kernel($app);
 $kernel->registerMiddleware([

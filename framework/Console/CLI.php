@@ -11,12 +11,14 @@ class CLI
     protected array $builtInCommands = [
         'migrate' => 'FF\Console\Commands\MigrateCommand',
         'migrate:rollback' => 'FF\Console\Commands\MigrateRollbackCommand',
+        'db:seed' => 'FF\Console\Commands\SeedCommand',
         'make:controller' => 'FF\Console\Commands\MakeControllerCommand',
         'make:model' => 'FF\Console\Commands\MakeModelCommand',
         'make:migration' => 'FF\Console\Commands\MakeMigrationCommand',
         'make:seeder' => 'FF\Console\Commands\MakeSeederCommand',
         'cache:clear' => 'FF\Console\Commands\CacheClearCommand',
         'serve' => 'FF\Console\Commands\ServeCommand',
+        'email:test' => 'FF\Console\Commands\TestEmailCommand',
     ];
 
     public function __construct()

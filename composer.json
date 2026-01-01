@@ -19,7 +19,7 @@
       "App\\": "app/"
     },
     "files": [
-      "framework/Support/helpers.php"
+      "framework/helpers.php"
     ]
   },
   "scripts": {

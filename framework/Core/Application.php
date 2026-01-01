@@ -279,6 +279,12 @@ class Application extends Container
             require_once __DIR__ . '/../helpers.php';
         }
 
+        // Load application helpers
+        $appHelpersPath = $this->basePath('app/helpers.php');
+        if (file_exists($appHelpersPath)) {
+            require_once $appHelpersPath;
+        }
+
         $this->loadEnvironment();
         $this->loadConfiguration();
         $this->validateAppKey();
@@ -358,16 +364,29 @@ class Application extends Container
     protected function bootstrapDatabase(): void
     {
         try {
-            // Create database connection with config array
+            // Prefer configuration defaults, overridden by environment when present
+            $dbConfig = config('database.connections.mysql', []);
+
+            $driver = $_ENV['DB_CONNECTION'] ?? env('DB_CONNECTION', $dbConfig['driver'] ?? 'mysql');
+            $host = $_ENV['DB_HOST'] ?? env('DB_HOST', $dbConfig['host'] ?? '127.0.0.1');
+            $username = $_ENV['DB_USERNAME'] ?? env('DB_USERNAME', $dbConfig['username'] ?? 'root');
+            $password = $_ENV['DB_PASSWORD'] ?? env('DB_PASSWORD', $dbConfig['password'] ?? '');
+            $database = $_ENV['DB_DATABASE'] ?? env('DB_DATABASE', $dbConfig['database'] ?? 'ff_framework');
+            $port = $_ENV['DB_PORT'] ?? env('DB_PORT', $dbConfig['port'] ?? 3306);
+
+            // Create database connection with resolved settings
             $connection = new \FF\Database\Connection([
-                'driver' => $_ENV['DB_CONNECTION'] ?? env('DB_CONNECTION', 'mysql'),
-                'host' => $_ENV['DB_HOST'] ?? env('DB_HOST', 'localhost'),
-                'username' => $_ENV['DB_USERNAME'] ?? env('DB_USERNAME', 'root'),
-                'password' => $_ENV['DB_PASSWORD'] ?? env('DB_PASSWORD', ''),
-                'database' => $_ENV['DB_DATABASE'] ?? env('DB_DATABASE', 'test'),
-                'port' => $_ENV['DB_PORT'] ?? env('DB_PORT', 3306),
+                'driver' => $driver,
+                'host' => $host,
+                'username' => $username,
+                'password' => $password,
+                'database' => $database,
+                'port' => $port,
             ]);
-            
+
+            // Register connection in container as singleton
+            $this->singleton(\FF\Database\Connection::class, $connection);
+
             // Set connection on all models
             \FF\Database\Model::setConnection($connection);
         } catch (\Exception $e) {

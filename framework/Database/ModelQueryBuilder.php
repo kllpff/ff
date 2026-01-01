@@ -35,36 +35,56 @@ class ModelQueryBuilder extends QueryBuilder
      */
     public function first(): ?object
     {
-        $result = parent::first();
-        if (!$result) {
+        // Avoid calling parent::first() because it internally calls $this->get(),
+        // which in this subclass returns Model instances and leads to double-wrapping.
+        $this->limit(1);
+        $rows = parent::get(); // raw array rows from QueryBuilder
+        $row = $rows[0] ?? null;
+        if (!$row) {
             return null;
         }
-        return new $this->modelClass($result);
+        $model = new $this->modelClass([]);
+        // Hydrate all attributes from DB, bypassing mass-assignment restrictions
+        $model->forceFill((array) $row);
+        // Make sure the primary key and existence flag are hydrated
+        $pk = $model->getPrimaryKey();
+        if (is_array($row) && array_key_exists($pk, $row)) {
+            $model->forceFill([$pk => $row[$pk]]);
+        }
+        $model->markExists(true);
+        return $model;
     }
 
     /**
      * Get all results as Model instances
-     * 
+     *
      * @return array Array of model instances
      */
     public function get(): array
     {
         $results = parent::get();
-        return array_map(fn($result) => new $this->modelClass($result), $results);
+        return array_map(function ($row) {
+            $model = new $this->modelClass([]);
+            // Hydrate all attributes from DB, bypassing mass-assignment restrictions
+            if (is_array($row)) {
+                $model->forceFill($row);
+                $pk = $model->getPrimaryKey();
+                if (array_key_exists($pk, $row)) {
+                    $model->forceFill([$pk => $row[$pk]]);
+                }
+            }
+            return $model->markExists(true);
+        }, $results);
     }
 
     /**
      * Find a record by ID and return as Model
-     * 
+     *
      * @param mixed $id The ID value
      * @return object|null The model instance or null
      */
     public function find($id): ?object
     {
-        $result = parent::find($id);
-        if (!$result) {
-            return null;
-        }
-        return new $this->modelClass($result);
+        return $this->where('id', $id)->first();
     }
 }

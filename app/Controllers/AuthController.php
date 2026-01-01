@@ -237,7 +237,7 @@ class AuthController
         // Find user by email
         $user = User::where('email', '=', $data['email'])->first();
 
-        if (!$user || !Hash::check($data['password'], $user->password)) {
+        if (!$user || !$user->password || !Hash::check($data['password'], $user->password)) {
             $this->logger->warning('Failed login attempt - invalid credentials', [
                 'email' => $data['email'],
                 'ip' => $request->ip()
@@ -260,19 +260,32 @@ class AuthController
         // Login user
         session()->regenerate();
         session()->put('auth_user_id', $user->id);
+        session()->put('auth_user_name', $user->name);
         session()->put('auth_user', [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email
         ]);
 
+        // Set admin flag if user is admin
+        if ($user->isAdmin()) {
+            session()->put('is_admin', true);
+        }
+
         $this->logger->info('User logged in successfully', [
             'user_id' => $user->id,
             'email' => $user->email,
+            'is_admin' => $user->isAdmin(),
             'ip' => $request->ip()
         ]);
 
         session()->flash('success', 'Welcome back, ' . $user->name . '!');
+
+        // Redirect to admin panel if admin, otherwise to dashboard
+        if ($user->isAdmin()) {
+            return redirect('/admin');
+        }
+
         return redirect('/dashboard');
     }
 

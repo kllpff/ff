@@ -93,4 +93,35 @@ return function(Router $router) {
         $router->put('/dashboard/categories/{id}', 'App\\Controllers\\CategoryController@update')->name('categories.update');
         $router->delete('/dashboard/categories/{id}', 'App\\Controllers\\CategoryController@destroy')->name('categories.destroy');
     });
+
+    // ===== ADMIN PANEL ROUTES (require admin privileges) =====
+
+    $router->group(['middleware' => [new AuthMiddleware()]], function($router) {
+        // Admin Dashboard
+        $router->get('/admin', 'App\\Controllers\\Admin\\DashboardController@index')->name('admin.dashboard');
+
+        // Admin Posts Management
+        $router->get('/admin/posts', 'App\\Controllers\\Admin\\PostController@index')->name('admin.posts.index');
+        $router->get('/admin/posts/create', 'App\\Controllers\\Admin\\PostController@create')->name('admin.posts.create');
+        $router->post('/admin/posts', 'App\\Controllers\\Admin\\PostController@store')
+            ->name('admin.posts.store')
+            ->middleware(new RateLimitMiddleware(20, 60)); // 20 posts per hour for admins
+        $router->get('/admin/posts/{id}/edit', 'App\\Controllers\\Admin\\PostController@edit')->name('admin.posts.edit');
+        $router->post('/admin/posts/{id}', 'App\\Controllers\\Admin\\PostController@update')->name('admin.posts.update');
+        $router->post('/admin/posts/{id}/delete', 'App\\Controllers\\Admin\\PostController@destroy')->name('admin.posts.destroy');
+
+        // Admin Categories Management
+        $router->get('/admin/categories', 'App\\Controllers\\Admin\\CategoryController@index')->name('admin.categories.index');
+        $router->get('/admin/categories/create', 'App\\Controllers\\Admin\\CategoryController@create')->name('admin.categories.create');
+        $router->post('/admin/categories', 'App\\Controllers\\Admin\\CategoryController@store')->name('admin.categories.store');
+        $router->get('/admin/categories/{id}/edit', 'App\\Controllers\\Admin\\CategoryController@edit')->name('admin.categories.edit');
+        $router->post('/admin/categories/{id}', 'App\\Controllers\\Admin\\CategoryController@update')->name('admin.categories.update');
+        $router->post('/admin/categories/{id}/delete', 'App\\Controllers\\Admin\\CategoryController@destroy')->name('admin.categories.destroy');
+
+        // Admin Users Management
+        $router->get('/admin/users', 'App\\Controllers\\Admin\\UserController@index')->name('admin.users.index');
+        $router->get('/admin/users/{id}/edit', 'App\\Controllers\\Admin\\UserController@edit')->name('admin.users.edit');
+        $router->post('/admin/users/{id}', 'App\\Controllers\\Admin\\UserController@update')->name('admin.users.update');
+        $router->post('/admin/users/{id}/delete', 'App\\Controllers\\Admin\\UserController@destroy')->name('admin.users.destroy');
+    });
 };

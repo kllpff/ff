@@ -1,5 +1,3 @@
-<?php $__layout = 'main'; ?>
-
 <div class="section">
     <div class="container">
         <h2 class="text-3xl font-bold mb-2">Documentation</h2>

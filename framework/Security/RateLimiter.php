@@ -228,10 +228,16 @@ class RateLimiter
                 return $callback();
             }
 
-            return $callback();
-        } finally {
+            $result = $callback();
+
             flock($handle, LOCK_UN);
             fclose($handle);
+
+            return $result;
+        } catch (\Throwable $e) {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+            throw $e;
         }
     }
 }

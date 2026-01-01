@@ -473,7 +473,7 @@ class QueryBuilder
 
     /**
      * Execute the query and get all results
-     * 
+     *
      * @return array The results
      */
     public function get(): array
@@ -495,7 +495,7 @@ class QueryBuilder
 
     /**
      * Get the first result as a Model instance
-     * 
+     *
      * @param string|null $model The model class to instantiate
      * @return object|null The model instance or null
      */
@@ -505,12 +505,55 @@ class QueryBuilder
         if (!$result) {
             return null;
         }
-        
+
         if ($model) {
             return new $model((array)$result);
         }
-        
+
         return (object)$result;
+    }
+
+    /**
+     * Paginate the query results
+     *
+     * @param int $perPage Number of items per page
+     * @param int $page Current page number
+     * @param string $path Base URL path for pagination links
+     * @return \FF\Pagination\Paginator
+     */
+    public function paginate(int $perPage = 15, ?int $page = null, string $path = ''): \FF\Pagination\Paginator
+    {
+        // Get current page from query string if not provided
+        if ($page === null) {
+            $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+        }
+
+        // Get total count
+        $total = $this->count();
+
+        // Calculate offset
+        $offset = ($page - 1) * $perPage;
+
+        // Get items for current page
+        $items = $this->offset($offset)->limit($perPage)->get();
+
+        // Use current URI path if not provided
+        if (empty($path)) {
+            $path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
+        }
+
+        // Get query parameters (excluding 'page')
+        $query = $_GET;
+        unset($query['page']);
+
+        return new \FF\Pagination\Paginator(
+            $items,
+            $total,
+            $perPage,
+            $page,
+            $path,
+            $query
+        );
     }
 
     /**
@@ -757,13 +800,17 @@ class QueryBuilder
     protected function validateOperator(string $operator): string
     {
         $operator = trim($operator);
-        $allowed = ['=', '!=', '<>', '<', '>', '<=', '>='];
+        $allowed = ['=', '!=', '<>', '<', '>', '<=', '>=', 'LIKE', 'NOT LIKE', 'ILIKE'];
 
-        if (!in_array($operator, $allowed, true)) {
-            throw new \InvalidArgumentException("Invalid SQL operator: {$operator}");
+        // Case-insensitive comparison for operators
+        $operatorUpper = strtoupper($operator);
+        foreach ($allowed as $allowedOp) {
+            if (strtoupper($allowedOp) === $operatorUpper) {
+                return $operatorUpper;
+            }
         }
 
-        return $operator;
+        throw new \InvalidArgumentException("Invalid SQL operator: {$operator}");
     }
 
     /**

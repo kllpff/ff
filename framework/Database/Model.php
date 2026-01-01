@@ -94,6 +94,29 @@ abstract class Model implements JsonSerializable
     }
 
     /**
+     * Get the primary key name
+     * 
+     * @return string
+     */
+    public function getPrimaryKey(): string
+    {
+        return $this->primaryKey;
+    }
+
+    /**
+     * Mark the model as existing or not
+     * 
+     * @param bool $exists
+     * @return self
+     */
+    public function markExists(bool $exists = true): self
+    {
+        $this->exists = $exists;
+        $this->original = $this->attributes;
+        return $this;
+    }
+
+    /**
      * Get a new QueryBuilder for this model
      * 
      * @return ModelQueryBuilder
@@ -133,6 +156,16 @@ abstract class Model implements JsonSerializable
     public static function find($id)
     {
         return static::query()->find($id);
+    }
+
+    /**
+     * Count the number of records for the model's table
+     * 
+     * @return int The total count
+     */
+    public static function count(): int
+    {
+        return static::query()->count();
     }
 
     /**
@@ -238,18 +271,20 @@ abstract class Model implements JsonSerializable
      */
     protected function isFillable(string $key): bool
     {
-        if (!empty($this->guarded) && in_array('*', $this->guarded)) {
-            return false;
-        }
-
-        if (!empty($this->guarded)) {
-            return !in_array($key, $this->guarded);
-        }
-
+        // Prefer explicit fillable if defined
         if (!empty($this->fillable)) {
-            return in_array($key, $this->fillable);
+            return in_array($key, $this->fillable, true);
         }
 
+        // Otherwise, enforce guarded rules
+        if (!empty($this->guarded)) {
+            if (in_array('*', $this->guarded, true)) {
+                return false;
+            }
+            return !in_array($key, $this->guarded, true);
+        }
+
+        // Default: allow assignment when neither fillable nor guarded specified
         return true;
     }
 
@@ -274,6 +309,17 @@ abstract class Model implements JsonSerializable
     public function __set(string $key, $value): void
     {
         $this->setAttribute($key, $value);
+    }
+
+    /**
+     * Magic isset for attributes (ensures empty() works with overloaded properties)
+     * 
+     * @param string $key The attribute key
+     * @return bool True if attribute exists and is not null
+     */
+    public function __isset(string $key): bool
+    {
+        return array_key_exists($key, $this->attributes) && $this->attributes[$key] !== null;
     }
 
     /**

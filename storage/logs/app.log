@@ -1,52 +1,53 @@
-[2025-11-04 23:39:39] INFO: Cache miss - computing data
-[2025-11-04 23:39:41] INFO: Cache miss - computing data
-[2025-11-04 23:40:48] INFO: Cache miss - computing data
-[2025-11-04 23:41:03] INFO: Cache miss - computing data
-[2025-11-04 23:41:14] DEBUG: Debug message
-[2025-11-04 23:41:14] INFO: Info message
-[2025-11-04 23:41:14] WARNING: Warning message
-[2025-11-04 23:41:14] ERROR: Error message
-[2025-11-04 23:43:08] DEBUG: Debug message
-[2025-11-04 23:43:08] INFO: Info message
-[2025-11-04 23:43:08] WARNING: Warning message
-[2025-11-04 23:43:08] ERROR: Error message
-[2025-11-04 23:43:10] INFO: Cache miss - computing data
-[2025-11-05 07:47:57] INFO: Cache miss - computing data
-[2025-11-05 07:48:07] DEBUG: Debug message
-[2025-11-05 07:48:07] INFO: Info message
-[2025-11-05 07:48:07] WARNING: Warning message
-[2025-11-05 07:48:07] ERROR: Error message
-[2025-11-05 07:50:52] DEBUG: Debug message
-[2025-11-05 07:50:52] INFO: Info message
-[2025-11-05 07:50:52] WARNING: Warning message
-[2025-11-05 07:50:52] ERROR: Error message
-[2025-11-05 07:50:53] DEBUG: Debug message
-[2025-11-05 07:50:53] INFO: Info message
-[2025-11-05 07:50:53] WARNING: Warning message
-[2025-11-05 07:50:53] ERROR: Error message
-[2025-11-05 07:50:54] DEBUG: Debug message
-[2025-11-05 07:50:54] INFO: Info message
-[2025-11-05 07:50:54] WARNING: Warning message
-[2025-11-05 07:50:54] ERROR: Error message
-[2025-11-05 07:50:55] DEBUG: Debug message
-[2025-11-05 07:50:55] INFO: Info message
-[2025-11-05 07:50:55] WARNING: Warning message
-[2025-11-05 07:50:55] ERROR: Error message
-[2025-11-05 07:50:56] DEBUG: Debug message
-[2025-11-05 07:50:56] INFO: Info message
-[2025-11-05 07:50:56] WARNING: Warning message
-[2025-11-05 07:50:56] ERROR: Error message
-[2025-11-05 07:50:57] DEBUG: Debug message
-[2025-11-05 07:50:57] INFO: Info message
-[2025-11-05 07:50:57] WARNING: Warning message
-[2025-11-05 07:50:57] ERROR: Error message
-[2025-11-05 07:50:58] DEBUG: Debug message
-[2025-11-05 07:50:58] INFO: Info message
-[2025-11-05 07:50:58] WARNING: Warning message
-[2025-11-05 07:50:58] ERROR: Error message
-[2025-11-05 07:50:59] DEBUG: Debug message
-[2025-11-05 07:50:59] INFO: Info message
-[2025-11-05 07:50:59] WARNING: Warning message
-[2025-11-05 07:50:59] ERROR: Error message
-[2025-11-05 08:40:22] INFO: Cache miss: Loading blog posts from database
-[2025-11-05 08:40:23] INFO: Cache miss: Loading categories from database
+[2025-11-13 17:37:46] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"6e5f5574e02a5100b6a7600ef7286767"}
+[2025-11-13 17:37:50] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"a59442b1812b7bb172285aa852ca9d99"}
+[2025-11-13 17:38:54] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"635160ff41cb704af14497e96323652e"}
+[2025-11-13 17:39:00] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"cee38b8130765b4c7834ad0f85dc001c"}
+[2025-11-13 17:39:23] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"f8a192f7b959c27b0e21e76e0110207a"}
+[2025-11-13 17:39:28] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"bc6b2c1ae81015ba031e84ff366e44bd"}
+[2025-11-13 17:39:33] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"ca0fc0cb42bedafe22b06d0b5e12c6db"}
+[2025-11-13 17:39:36] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"7cdc5a0396cea73e04e20733cd2db36f"}
+[2025-11-13 17:39:39] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"36e1e5e7e80659df2a209a97159028e0"}
+[2025-11-13 17:39:40] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"b1065e73133dfac259aa2d0852398896"}
+[2025-11-13 17:39:42] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"02682014e632794033e61fdd5cbdf8fa"}
+[2025-11-13 17:39:45] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"b0fb98590d73c443d48e1eb02e51f509"}
+[2025-11-13 17:39:46] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"a70109e6c3f09cce9173a4371a51893c"}
+[2025-11-13 19:52:31] ERROR: Exception: No routes matched for: GET /@vite/client in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/@vite/client","ip":"::1","user_id":null,"request_id":"5fea06420ceb9ab8be5129e540f6bee0"}
+[2025-11-13 20:54:15] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"3dfdba6005d0eaf5c36390830a7edca7"}
+[2025-11-14 12:37:00] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"69f08a44d45a3831da4e8d0d621b8133"}
+[2025-11-14 12:39:06] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"9a6b8a02c90bf13508a4b7305c7a1d96"}
+[2025-11-14 12:39:30] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"8577573952b02251528cc150e75ff4f6"}
+[2025-11-14 12:39:36] DEBUG: Login attempt {"ip":"127.0.0.1"}
+[2025-11-14 12:39:36] INFO: User logged in successfully {"user_id":2,"email":"kllpff@gmail.com","is_admin":true,"ip":"127.0.0.1"}
+[2025-11-14 12:39:37] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":2,"request_id":"17e2119ecf68cb1609ead357ef46ac25"}
+[2025-11-14 13:18:06] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":2,"request_id":"73a2164eb32bfe8210398e3642332d3a"}
+[2025-11-14 13:18:13] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":2,"request_id":"31fc5fcb1aef0d91c89009b52abe2e01"}
+[2025-11-14 13:18:21] DEBUG: Login attempt {"ip":"127.0.0.1"}
+[2025-11-14 13:18:21] INFO: User logged in successfully {"user_id":2,"email":"kllpff@gmail.com","is_admin":true,"ip":"127.0.0.1"}
+[2025-11-14 13:18:22] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":2,"request_id":"8ced8e583040827dcf8c6f8710e30937"}
+[2025-11-14 13:18:37] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":2,"request_id":"727afe8f3bfecf237c4a3be77ae56a35"}
+[2025-11-14 13:18:44] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":2,"request_id":"14fcfba0d8e550eb0be23ce166fdcffc"}
+[2025-11-14 13:18:45] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":2,"request_id":"b789c6e0c51c237479eb68a1d0fa04ce"}
+[2025-11-14 13:18:46] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":2,"request_id":"962130ee417ad480baaae25119bde792"}
+[2025-11-14 13:18:59] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":2,"request_id":"187f5a5b5d9595cca709585eba6593d6"}
+[2025-11-14 13:19:37] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":2,"request_id":"4dd345a1c52c5dbdce070b1427261c6a"}
+[2025-11-14 13:19:51] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":2,"request_id":"efc2cca7ad32c93020324a927ab2910b"}
+[2025-11-14 13:20:00] ERROR: Exception: No routes matched for: GET /assets/css/halfmoon.min.css.map in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/assets/css/halfmoon.min.css.map","ip":"127.0.0.1","user_id":2,"request_id":"346233362ed09b2d888c65592279f7a6"}
+[2025-11-14 13:20:00] ERROR: Exception: No routes matched for: GET /assets/js/bootstrap.bundle.min.js.map in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/assets/js/bootstrap.bundle.min.js.map","ip":"127.0.0.1","user_id":2,"request_id":"dd944f4d3752e36ae7e9d48dc6af05b3"}
+[2025-11-14 13:21:04] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":2,"request_id":"ec4ab80a1be77ea8fe3eadfe007d1fc0"}
+[2025-11-14 13:21:09] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":2,"request_id":"f793751f4a4a346c9e34311187862c45"}
+[2025-11-14 21:36:01] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"8b5daf81a7a1a2bee5e34ff0fa9d91e9"}
+[2025-11-14 22:17:06] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"d13262013c8b79d825ffbeb348e59fb3"}
+[2025-11-17 09:21:06] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"3ce2af081c6654d3c7e924aefba8c2ef"}
+[2025-11-17 09:21:28] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"32124634c02e138ded1d16ec7f28da0d"}
+[2025-11-17 09:21:47] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"f4cce18aa0714001b51e0bd73eb9c992"}
+[2025-11-17 09:22:12] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"17f149facb49c4810ace14865ca27839"}
+[2025-11-27 20:46:02] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"f5af7d9378e72fcfe1dbf116352b27a1"}
+[2025-11-27 20:46:52] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"14ce666c8c8a6fdb8ff4f416acde301f"}
+[2025-11-27 20:47:26] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"2f5acebc1fc5da2a92933b7b3bb23717"}
+[2025-11-27 20:47:41] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"ab8e3b405056b3c17d40dfb24cb4a340"}
+[2025-11-27 20:47:44] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"b1f284bcd6fd3ef68d33e44400bf8bf1"}
+[2025-11-27 20:48:57] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"eab32db7ab974bbc6d2fc8f8bc2582f5"}
+[2025-11-27 20:49:13] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"147fd8c427b1e63c969ce3be575628c6"}
+[2025-11-27 20:49:15] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"7a3fa1af779398f3be86d13c2d19e74c"}
+[2025-11-27 20:49:16] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"68978f9d467155c1dad735eb2f0f9ccf"}
+[2025-11-27 20:49:30] ERROR: Exception: No routes matched for: GET /favicon.ico in /Users/kirill/Projects/ff/framework/Http/Router.php:462 {"code":0,"method":"GET","uri":"/favicon.ico","ip":"127.0.0.1","user_id":null,"request_id":"757617fcda9a0d270691636301f64b82"}

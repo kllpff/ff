@@ -1,5 +1,3 @@
-<?php $__layout = 'main'; ?>
-
 <div class="section">
     <div class="container">
         <div class="max-w-md mx-auto">

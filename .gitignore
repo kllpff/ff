@@ -12,7 +12,6 @@ composer.lock
 .idea/
 *.sublime-project
 *.sublime-workspace
-.DS_Store
 
 # Logs
 tmp/logs/*

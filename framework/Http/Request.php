@@ -231,12 +231,60 @@ class Request
 
     /**
      * Get the client IP address
-     * 
+     *
      * @return string
      */
     public function ip(): string
     {
-        return $this->server['REMOTE_ADDR'] ?? '127.0.0.1';
+        $remoteAddr = $this->server['REMOTE_ADDR'] ?? '127.0.0.1';
+
+        // If not behind trusted proxy, return REMOTE_ADDR
+        if (!$this->isFromTrustedProxy()) {
+            return $remoteAddr;
+        }
+
+        // Check X-Forwarded-For header (most common)
+        $forwardedFor = $this->header('x-forwarded-for');
+        if ($forwardedFor) {
+            // X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
+            // The first IP is the original client
+            $ips = array_map('trim', explode(',', $forwardedFor));
+            return $ips[0];
+        }
+
+        // Fallback to REMOTE_ADDR
+        return $remoteAddr;
+    }
+
+    /**
+     * Check if request is from a trusted proxy
+     *
+     * @return bool
+     */
+    protected function isFromTrustedProxy(): bool
+    {
+        $remoteAddr = $this->server['REMOTE_ADDR'] ?? '';
+        if ($remoteAddr === '') {
+            return false;
+        }
+
+        $trustedProxies = config('app.trusted_proxies', []);
+
+        // Special case: trust all proxies (use with caution!)
+        if ($trustedProxies === '*') {
+            // Log warning in development/debug mode
+            if (config('app.debug', false)) {
+                error_log('WARNING: trusted_proxies set to "*" - trusting all proxies. This is a security risk in production!');
+            }
+            return true;
+        }
+
+        // Check if REMOTE_ADDR is in trusted proxies list
+        if (is_array($trustedProxies)) {
+            return in_array($remoteAddr, $trustedProxies, true);
+        }
+
+        return false;
     }
 
     /**
@@ -366,19 +414,32 @@ class Request
     {
         // Determine scheme
         $scheme = $this->isSecure() ? 'https' : 'http';
-        $forwardedProto = strtolower((string)$this->header('x-forwarded-proto', ''));
-        if ($forwardedProto === 'https' || $forwardedProto === 'http') {
-            $scheme = $forwardedProto;
+
+        // Only trust X-Forwarded-Proto from trusted proxies
+        if ($this->isFromTrustedProxy()) {
+            $forwardedProto = strtolower((string)$this->header('x-forwarded-proto', ''));
+            if ($forwardedProto === 'https' || $forwardedProto === 'http') {
+                $scheme = $forwardedProto;
+            }
         }
 
-        // Determine host
-        $host = (string)$this->header('x-forwarded-host', '');
+        // Determine host - validate against allowed_hosts
+        $host = '';
+
+        // Only trust X-Forwarded-Host from trusted proxies
+        if ($this->isFromTrustedProxy()) {
+            $host = (string)$this->header('x-forwarded-host', '');
+        }
+
         if ($host === '') {
             $host = (string)$this->header('host', '');
         }
         if ($host === '') {
             $host = (string)($this->getServer('HTTP_HOST') ?? 'localhost');
         }
+
+        // Validate host against allowed_hosts whitelist
+        $host = $this->validateHost($host);
 
         // Determine port
         $port = (int)($this->getServer('SERVER_PORT') ?? 0);
@@ -389,6 +450,35 @@ class Request
         }
 
         return $scheme . '://' . $authority . $this->getPath();
+    }
+
+    /**
+     * Validate host against allowed_hosts whitelist
+     *
+     * @param string $host
+     * @return string
+     */
+    protected function validateHost(string $host): string
+    {
+        // Remove port if present
+        $hostWithoutPort = explode(':', $host)[0];
+
+        $allowedHosts = config('app.allowed_hosts', []);
+
+        // If no allowed hosts configured, accept any (backward compatibility)
+        if (empty($allowedHosts)) {
+            return $host;
+        }
+
+        // Check if host is in whitelist
+        foreach ($allowedHosts as $allowedHost) {
+            if (strcasecmp($hostWithoutPort, $allowedHost) === 0) {
+                return $host;
+            }
+        }
+
+        // Host not in whitelist - use first allowed host as fallback
+        return $allowedHosts[0];
     }
 
     /**
@@ -494,6 +584,17 @@ class Request
     public function files(): array
     {
         return $this->files;
+    }
+
+    /**
+     * Check if a file was uploaded for the given key
+     *
+     * @param string $key
+     * @return bool
+     */
+    public function hasFile(string $key): bool
+    {
+        return $this->file($key) !== null;
     }
 
     /**

@@ -345,16 +345,58 @@ class Validator
     /**
      * Validate unique rule (for database uniqueness)
      * 
+     * Использование:
+     * - 'unique:users' - проверка в таблице users по имени поля
+     * - 'unique:users,email' - проверка в таблице users по колонке email
+     * - 'unique:users,email,5' - игнорировать запись с id=5 (для обновления)
+     * - 'unique:users,email,NULL,id' - явное указание колонки id для исключения
+     * 
      * @param string $field The field
      * @param mixed $value The value
-     * @param array $params Rule parameters (table, column)
+     * @param array $params Rule parameters (table, column, except, idColumn)
      * @return bool
      */
     protected function validateUnique(string $field, $value, array $params): bool
     {
-        // This will be fully implemented with database checking
-        // For now, assume unique
-        return true;
+        // Минимум нужна таблица
+        if (empty($params[0])) {
+            return false;
+        }
+
+        $table = $params[0];
+        $column = $params[1] ?? $field; // По умолчанию - имя поля
+        $except = $params[2] ?? null;   // ID записи для исключения
+        $idColumn = $params[3] ?? 'id'; // Колонка для исключения
+
+        try {
+            // Получаем подключение к БД через DI контейнер
+            $connection = app('db');
+            
+            $query = $connection->table($table)->where($column, $value);
+
+            // Исключаем текущую запись при обновлении
+            if ($except !== null && $except !== '' && strtoupper($except) !== 'NULL') {
+                $query->where($idColumn, '!=', $except);
+            }
+
+            // Если запись существует - не уникально (false)
+            return !$query->exists();
+        } catch (\Exception $e) {
+            // При ошибке БД логируем и возвращаем true (пропускаем проверку)
+            try {
+                if (function_exists('logger')) {
+                    \logger()->warning('Unique validation failed', [
+                        'field' => $field,
+                        'table' => $table,
+                        'column' => $column,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            } catch (\Throwable $logError) {
+                // Logger недоступен - игнорируем
+            }
+            return true;
+        }
     }
 
     /**
@@ -430,12 +472,35 @@ class Validator
 
     /**
      * Check if there are validation errors
-     * 
+     *
      * @return bool
      */
     public function hasErrors(): bool
     {
         return !empty($this->errors);
+    }
+
+    /**
+     * Check if validation failed (alias for hasErrors)
+     *
+     * @return bool
+     */
+    public function fails(): bool
+    {
+        if (empty($this->errors)) {
+            $this->validate();
+        }
+        return $this->hasErrors();
+    }
+
+    /**
+     * Get all validation errors (alias for getErrors)
+     *
+     * @return array
+     */
+    public function errors(): array
+    {
+        return $this->getErrors();
     }
 
     /**

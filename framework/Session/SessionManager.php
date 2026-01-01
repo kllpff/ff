@@ -72,12 +72,25 @@ class SessionManager
         ini_set('session.use_only_cookies', '1');
         ini_set('session.gc_maxlifetime', $this->config['lifetime'] * 60);
 
+        // Determine if connection is secure (HTTPS)
+        $isHttps = (
+            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+            (!empty($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443) ||
+            (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+        );
+
+        // Override secure flag if HTTPS detected but config says false
+        $secureFlag = $this->config['secure'];
+        if ($isHttps && !$secureFlag) {
+            $secureFlag = true; // Auto-enable secure flag on HTTPS
+        }
+
         // Set cookie parameters
         session_set_cookie_params([
             'lifetime' => $this->config['expire_on_close'] ? 0 : $this->config['lifetime'] * 60,
             'path' => '/',
             'domain' => $this->determineCookieDomain(),
-            'secure' => $this->config['secure'],
+            'secure' => $secureFlag,
             'httponly' => $this->config['http_only'],
             'samesite' => $this->config['same_site'],
         ]);

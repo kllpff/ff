@@ -248,8 +248,16 @@ class Grammar
     {
         // COUNT allows * and table.*
         $safe = $this->formatSelectIdentifier($column);
+
+        // Save original selects to restore after compilation
+        $originalSelects = $query->selects;
         $query->selects = ["COUNT($safe) as aggregate"];
-        return $this->compileSelect($query);
+        $sql = $this->compileSelect($query);
+
+        // Restore original selects
+        $query->selects = $originalSelects;
+
+        return $sql;
     }
 
     /**
@@ -262,13 +270,21 @@ class Grammar
     public function compileMax(QueryBuilder $query, string $column): string
     {
         $safe = $this->formatIdentifier($column, 'column');
+
+        // Save original selects to restore after compilation
+        $originalSelects = $query->selects;
         $query->selects = ["MAX($safe) as aggregate"];
-        return $this->compileSelect($query);
+        $sql = $this->compileSelect($query);
+
+        // Restore original selects
+        $query->selects = $originalSelects;
+
+        return $sql;
     }
 
     /**
      * Compile a MIN aggregation
-     * 
+     *
      * @param QueryBuilder $query The query builder
      * @param string $column The column
      * @return string The compiled SQL
@@ -276,13 +292,21 @@ class Grammar
     public function compileMin(QueryBuilder $query, string $column): string
     {
         $safe = $this->formatIdentifier($column, 'column');
+
+        // Save original selects to restore after compilation
+        $originalSelects = $query->selects;
         $query->selects = ["MIN($safe) as aggregate"];
-        return $this->compileSelect($query);
+        $sql = $this->compileSelect($query);
+
+        // Restore original selects
+        $query->selects = $originalSelects;
+
+        return $sql;
     }
 
     /**
      * Compile an AVG aggregation
-     * 
+     *
      * @param QueryBuilder $query The query builder
      * @param string $column The column
      * @return string The compiled SQL
@@ -290,13 +314,21 @@ class Grammar
     public function compileAvg(QueryBuilder $query, string $column): string
     {
         $safe = $this->formatIdentifier($column, 'column');
+
+        // Save original selects to restore after compilation
+        $originalSelects = $query->selects;
         $query->selects = ["AVG($safe) as aggregate"];
-        return $this->compileSelect($query);
+        $sql = $this->compileSelect($query);
+
+        // Restore original selects
+        $query->selects = $originalSelects;
+
+        return $sql;
     }
 
     /**
      * Compile a SUM aggregation
-     * 
+     *
      * @param QueryBuilder $query The query builder
      * @param string $column The column
      * @return string The compiled SQL
@@ -304,7 +336,15 @@ class Grammar
     public function compileSum(QueryBuilder $query, string $column): string
     {
         $safe = $this->formatIdentifier($column, 'column');
+
+        // Save original selects to restore after compilation
+        $originalSelects = $query->selects;
         $query->selects = ["SUM($safe) as aggregate"];
-        return $this->compileSelect($query);
+        $sql = $this->compileSelect($query);
+
+        // Restore original selects
+        $query->selects = $originalSelects;
+
+        return $sql;
     }
 }

@@ -19,7 +19,9 @@ class CsrfMiddleware implements MiddlewareInterface
      * 
      * @var array
      */
-    protected array $except = [];
+    protected array $except = [
+        'api/*',  // Exclude all API routes from CSRF protection
+    ];
 
     /**
      * Handle an incoming request

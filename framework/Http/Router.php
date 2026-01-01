@@ -574,7 +574,7 @@ class Router
 
     /**
      * Run the matched route and return response
-     * 
+     *
      * @param Route $route The matched route
      * @param Request $request The HTTP request
      * @return Response The response
@@ -585,7 +585,7 @@ class Router
         $parameters = $route->getParameters();
 
         $destination = function (Request $request) use ($action, $parameters) {
-            return $this->executeRouteAction($action, $parameters);
+            return $this->executeRouteAction($action, $parameters, $request);
         };
 
         $response = $this->runRouteMiddleware($route, $request, $destination);
@@ -598,16 +598,17 @@ class Router
      *
      * @param mixed $action
      * @param array $parameters
+     * @param Request $request
      * @return mixed
      */
-    protected function executeRouteAction($action, array $parameters)
+    protected function executeRouteAction($action, array $parameters, Request $request)
     {
         if ($action instanceof Closure) {
             return call_user_func_array($action, array_values($parameters));
         }
 
         if (is_string($action)) {
-            return $this->callControllerAction($action, $parameters);
+            return $this->callControllerAction($action, $parameters, $request);
         }
 
         throw new \Exception('Invalid route action');
@@ -668,20 +669,85 @@ class Router
 
     /**
      * Call a controller action
-     * 
+     *
      * @param string $action The controller@method string
      * @param array $parameters Route parameters
+     * @param Request $request The current request
      * @return mixed The controller action result
      */
-    protected function callControllerAction(string $action, array $parameters)
+    protected function callControllerAction(string $action, array $parameters, Request $request)
     {
         [$controllerClass, $method] = explode('@', $action);
 
         // Resolve controller from container
         $controller = $this->app->make($controllerClass);
 
-        // Call the method with parameters
-        return call_user_func_array([$controller, $method], array_values($parameters));
+        // Resolve method parameters using reflection
+        $methodParameters = $this->resolveMethodParameters($controller, $method, $parameters, $request);
+
+        // Call the method with resolved parameters
+        return call_user_func_array([$controller, $method], $methodParameters);
+    }
+
+    /**
+     * Resolve method parameters using reflection and dependency injection
+     *
+     * @param object $controller The controller instance
+     * @param string $method The method name
+     * @param array $routeParameters Route parameters from URI
+     * @param Request $request The current request
+     * @return array Resolved parameters
+     */
+    protected function resolveMethodParameters(object $controller, string $method, array $routeParameters, Request $request): array
+    {
+        $reflection = new \ReflectionMethod($controller, $method);
+        $methodParams = $reflection->getParameters();
+        $resolvedParams = [];
+
+        foreach ($methodParams as $param) {
+            $paramType = $param->getType();
+
+            // If parameter has a type hint, try to resolve from container
+            if ($paramType && !$paramType->isBuiltin()) {
+                $typeName = $paramType->getName();
+
+                // Special handling for Request - always inject current request
+                if ($typeName === Request::class || is_subclass_of($typeName, Request::class)) {
+                    $resolvedParams[] = $request;
+                    continue;
+                }
+
+                // Try to resolve other types from container
+                if ($this->app && $this->app->has($typeName)) {
+                    $resolvedParams[] = $this->app->make($typeName);
+                    continue;
+                }
+            }
+
+            // Check if this is a route parameter
+            $paramName = $param->getName();
+            if (array_key_exists($paramName, $routeParameters)) {
+                $resolvedParams[] = $routeParameters[$paramName];
+                continue;
+            }
+
+            // If parameter has default value, use it
+            if ($param->isDefaultValueAvailable()) {
+                $resolvedParams[] = $param->getDefaultValue();
+                continue;
+            }
+
+            // If parameter is nullable, pass null
+            if ($param->allowsNull()) {
+                $resolvedParams[] = null;
+                continue;
+            }
+
+            // Can't resolve parameter
+            throw new \Exception("Cannot resolve parameter '{$paramName}' for {$controller}::{$method}()");
+        }
+
+        return $resolvedParams;
     }
 
     /**
